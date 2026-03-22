@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+
+// Importaciones de la nueva arquitectura
+import 'data/datasources/remote/api_service.dart';
+import 'data/repositories/auth_repository_impl.dart';
+import 'domain/usecases/login_use_case.dart';
 import 'presentation/notifiers/auth_notifier.dart';
 import 'presentation/screens/login_screen.dart';
 
@@ -11,10 +16,19 @@ Future<void> main() async {
   // Carga las variables de entorno desde el archivo .env
   await dotenv.load(fileName: ".env");
   
+  // 1. Instanciamos las fuentes de datos
+  final apiService = ApiService();
+  
+  // 2. Instanciamos los repositorios
+  final authRepository = AuthRepositoryImpl(apiService);
+  
+  // 3. Instanciamos los casos de uso
+  final loginUseCase = LoginUseCase(authRepository);
+  
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthNotifier()),
+        ChangeNotifierProvider(create: (_) => AuthNotifier(loginUseCase)),
       ],
       child: const MyApp(),
     ),
@@ -27,10 +41,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Preventas Oracle',
       debugShowCheckedModeBanner: false,
+      title: 'Preventas',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       home: const LoginScreen(),

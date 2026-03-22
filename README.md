@@ -14,6 +14,11 @@ Aplicación Flutter para la gestión de preventas. Este proyecto está diseñado
    ```powershell
    flutter pub get
    ```
+3. **Reinstalar Skills del Agente**:
+   Este proyecto utiliza un sistema de "skills" para el asistente de IA. Para reinstalarlos desde el archivo de bloqueo:
+   ```powershell
+   npx skills install
+   ```
 
 ## Configuración del Entorno
 
@@ -44,6 +49,13 @@ flutter run
 ## Documentación de API (openspec)
 
 Las especificaciones de la API se encuentran en el directorio `docs/api`. Estas especificaciones siguen el estándar OpenAPI 3.0 y se pueden encontrar en el archivo [openapi.yaml](docs/api/openapi.yaml).
+
+## Especificaciones de Comportamiento (Gherkin)
+
+Este proyecto utiliza BDD (Behavior Driven Development). Las especificaciones de comportamiento se encuentran en el directorio `test/features` y siguen la sintaxis Gherkin.
+
+- [login.feature](test/features/login.feature): Escenarios para la funcionalidad de inicio de sesión.
+- [toma_de_pedidos.feature](test/features/toma_de_pedidos.feature): Escenarios para el flujo principal de toma de pedidos.
 
 ---
 > [!NOTE]

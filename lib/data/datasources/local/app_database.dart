@@ -1,7 +1,5 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
+import 'package:drift_sqflite/drift_sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -23,10 +21,10 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 }
 
-LazyDatabase _openConnection() {
+QueryExecutor _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = p.join(dbFolder.path, 'db.sqlite');
-    return NativeDatabase.createInBackground(File(file));
+    return SqfliteQueryExecutor.inDatabaseFolder(path: 'db.sqlite');
   });
 }

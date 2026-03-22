@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../data/repositories/auth_repository.dart';
-import '../../data/models/dto/auth_response_dto.dart';
+import '../../domain/usecases/login_use_case.dart';
+import '../../domain/entities/user_entity.dart';
 
 class AuthNotifier extends ChangeNotifier {
-  final AuthRepository _authRepository = AuthRepository();
+  final LoginUseCase _loginUseCase;
+
+  AuthNotifier(this._loginUseCase);
 
   bool _isLoading = false;
   String? _errorMessage;
-  AuthResponse? _authResponse;
+  UserEntity? _currentUser;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  AuthResponse? get authResponse => _authResponse;
+  UserEntity? get currentUser => _currentUser;
+
+  // Mantengo getter authResponse por compatibilidad con LoginScreen existente
+  UserEntity? get authResponse => _currentUser;
 
   Future<bool> login(String organizacion, String usuario, String contrasenia) async {
     _isLoading = true;
@@ -19,16 +24,19 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _authResponse = await _authRepository.login(organizacion, usuario, contrasenia);
-      
-      if (_authResponse?.resultado == 'ERROR') { // Suponiendo un string de resultado
-        _errorMessage = 'Credenciales inválidas';
-        _isLoading = false;
+      _currentUser = await _loginUseCase.execute(
+        organizacion: organizacion,
+        usuario: usuario,
+        contrasenia: contrasenia,
+      );
+
+      _isLoading = false;
+      if (_currentUser == null) {
+        _errorMessage = 'Credenciales inválidas o sesión no iniciada';
         notifyListeners();
         return false;
       }
 
-      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
@@ -40,7 +48,7 @@ class AuthNotifier extends ChangeNotifier {
   }
 
   void logout() {
-    _authResponse = null;
+    _currentUser = null;
     notifyListeners();
   }
 }
