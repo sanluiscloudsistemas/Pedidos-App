@@ -1,0 +1,19 @@
+openapi: 3.0.0
+info:
+  title: API de Preventas (openspec)
+  description: Especificaciones de la API para el sistema de gestión de preventas.
+  version: 1.0.0
+servers:
+  - url: http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile
+    description: Servidor de Desarrollo Oracle ORDS
+paths:
+  /login:
+    post:
+      summary: Autenticación de usuario
+      description: Permite a los usuarios iniciar sesión en la aplicación.
+      responses:
+        '200':
+          description: Inicio de sesión exitoso
+        '401':
+          description: Credenciales inválidas
+# Aquí se añadirán más rutas según la evolución del proyecto.
