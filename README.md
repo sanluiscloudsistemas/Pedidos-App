@@ -7,15 +7,22 @@ Aplicación Flutter para la gestión de preventas. Este proyecto está diseñado
 - **Flutter SDK**: ^3.11.3
 - **Dart SDK**: Compatible con la versión de Flutter mencionada.
 
-## Instalación
+## Instalación e Inicialización
+
+Siga estos pasos para dejar el entorno listo para el desarrollo:
 
 1. **Clonar el proyecto** en su máquina local.
 2. **Obtener las dependencias**:
    ```powershell
    flutter pub get
    ```
-3. **Reinstalar Skills del Agente**:
-   Este proyecto utiliza un sistema de "skills" para el asistente de IA. Para reinstalarlos desde el archivo de bloqueo:
+3. **Generar código de Base de Datos (Drift)**:
+   Este paso es obligatorio para crear los archivos `.g.dart` necesarios para la persistencia local:
+   ```powershell
+   flutter pub run build_runner build --delete-conflicting-outputs
+   ```
+4. **Instalar Skills del Agente** (Opcional - solo para asistencia IA):
+   Para habilitar las herramientas extendidas del asistente:
    ```powershell
    npx skills install
    ```
@@ -24,23 +31,15 @@ Aplicación Flutter para la gestión de preventas. Este proyecto está diseñado
 
 La aplicación utiliza variables de entorno para configurar las URLs de la API.
 
-1. Localice el archivo `.env` en la raíz del proyecto.
+1. Localice o cree el archivo `.env` en la raíz del proyecto.
 2. Asegúrese de que contenga la URL correcta de la API:
    ```env
    API_URL=http://sanluiscloud.ddns.net/ords/sanluiscloud/hr
    ```
 
-## Generación de Base de Datos (Drift)
-
-Este proyecto utiliza `drift` para la persistencia de datos. Siempre que se realicen cambios en las tablas o el esquema de la base de datos, es necesario ejecutar el generador de código:
-
-```powershell
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
 ## Ejecución
 
-Para iniciar la aplicación en un dispositivo o emulador:
+Para iniciar la aplicación en un dispositivo, emulador o escritorio:
 
 ```powershell
 flutter run
