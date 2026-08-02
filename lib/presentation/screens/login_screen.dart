@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_styles.dart';
 import '../notifiers/auth_notifier.dart';
 import 'home_screen.dart';
 
@@ -11,17 +13,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 1. Los 'mandos a distancia' para el formulario
   final _formKey = GlobalKey<FormState>();
-  
-  // 2. Controladores para leer lo que escribe el usuario
   final _orgController = TextEditingController();
   final _userController = TextEditingController();
   final _passController = TextEditingController();
 
   @override
   void dispose() {
-    // Es vital limpiar los controladores para no gastar memoria
     _orgController.dispose();
     _userController.dispose();
     _passController.dispose();
@@ -31,20 +29,31 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ingreso Preventas')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.primaryRed,
+        title: const Text('Ingreso Preventas', style: AppStyles.appBarTitleStyle),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey, // Conectamos nuestro 'control remoto' al formulario
+          key: _formKey,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 24),
+              const CircleAvatar(
+                radius: 40,
+                backgroundColor: AppColors.primaryRed,
+                child: Icon(Icons.shopping_bag, size: 40, color: Colors.white),
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _orgController,
                 decoration: const InputDecoration(
                   labelText: 'Organización',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.business),
+                  prefixIcon: Icon(Icons.business, color: AppColors.primaryRed),
                 ),
                 validator: (val) => val!.isEmpty ? 'Campo requerido' : null,
               ),
@@ -54,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Usuario',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+                  prefixIcon: Icon(Icons.person, color: AppColors.primaryRed),
                 ),
                 validator: (val) => val!.isEmpty ? 'Campo requerido' : null,
               ),
@@ -64,25 +73,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Contraseña',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
+                  prefixIcon: Icon(Icons.lock, color: AppColors.primaryRed),
                 ),
                 obscureText: true,
                 validator: (val) => val!.isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 24),
-              
-              // Widget que reacciona al estado de carga
               Consumer<AuthNotifier>(
                 builder: (context, auth, child) {
                   if (auth.isLoading) {
-                    return const CircularProgressIndicator();
+                    return const CircularProgressIndicator(color: AppColors.primaryRed);
                   }
-                  
+
                   return SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      style: AppStyles.primaryButtonStyle.copyWith(
+                        padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 16)),
                       ),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
@@ -103,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin(BuildContext context) async {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    
+
     final success = await authNotifier.login(
       _orgController.text,
       _userController.text,

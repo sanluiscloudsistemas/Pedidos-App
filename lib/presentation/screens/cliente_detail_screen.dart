@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_styles.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
+import '../widgets/common/status_pill_tag.dart';
+
 /// Modelo completo para el Detalle de un Cliente
 class ClienteDetailModel {
   final String codigo;
@@ -41,69 +47,29 @@ class ClienteDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.help_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 8),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.person_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 12),
-            ],
-          ),
-        ],
+      backgroundColor: AppColors.background,
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Encabezado con Código de Cliente
-              Text(
-                'Cliente ${cliente.codigo}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF212121),
-                ),
+              // Encabezado con Código y Tag de Estado del Cliente
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Cliente ${cliente.codigo}',
+                    style: AppStyles.sectionTitleStyle.copyWith(fontSize: 18),
+                  ),
+                  if (cliente.estado.isNotEmpty)
+                    StatusPillTag.active(label: cliente.estado),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -129,10 +95,9 @@ class ClienteDetailScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+      decoration: AppStyles.cardDecoration(
+        backgroundColor: Colors.white,
+        borderColor: AppColors.cardBorder,
       ),
       child: Stack(
         children: [
@@ -152,17 +117,14 @@ class ClienteDetailScreen extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF757575),
-                  ),
+                  style: AppStyles.subtitleStyle,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value.isEmpty ? ' ' : value,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF212121),
+                    color: AppColors.textDark,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -178,7 +140,7 @@ class ClienteDetailScreen extends StatelessWidget {
 class _RedCornerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFD32F2F);
+    final paint = Paint()..color = AppColors.primaryRed;
     final path = Path()
       ..moveTo(0, 0)
       ..lineTo(size.width, 0)

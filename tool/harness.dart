@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -83,6 +84,11 @@ void main(List<String> arguments) async {
 
   if (argsMap.containsKey('help')) {
     _printHelp();
+    return;
+  }
+
+  if (argsMap.containsKey('watch')) {
+    await _startWatchMode();
     return;
   }
 
@@ -777,12 +783,51 @@ Future<void> _prepareDeploy(String targetBranch) async {
   print('   4. Ejecute git push origin $targetBranch.');
 }
 
+Future<void> _startWatchMode() async {
+  print('👀 [WATCH MODE] Escuchando cambios en los directorios `lib/` y `test/`...');
+  print('💡 Presione Ctrl + C para salir del modo de observación.\n');
+
+  bool isRunning = false;
+
+  Future<void> runWatcherTests() async {
+    if (isRunning) return;
+    isRunning = true;
+    print('\n🔄 [WATCH MODE] Cambio detectado. Re-ejecutando tests de Flutter...');
+    final stopwatch = Stopwatch()..start();
+    final result = await Process.run('flutter', ['test'], runInShell: true);
+    stopwatch.stop();
+
+    if (result.exitCode == 0) {
+      print('✅ [WATCH MODE] Todas las pruebas pasaron exitosamente en ${stopwatch.elapsedMilliseconds}ms.');
+    } else {
+      print('❌ [WATCH MODE] Pruebas fallaron:');
+      print(result.stdout);
+      print(result.stderr);
+    }
+    isRunning = false;
+  }
+
+  // Ejecución de pruebas inicial
+  await runWatcherTests();
+
+  final libWatcher = Directory('lib').watch(recursive: true);
+  final testWatcher = Directory('test').watch(recursive: true);
+
+  libWatcher.listen((_) => runWatcherTests());
+  testWatcher.listen((_) => runWatcherTests());
+
+  // Mantener el proceso vivo
+  await Completer<void>().future;
+}
+
 Map<String, String> _parseArgs(List<String> args) {
   final map = <String, String>{};
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
     if (arg == '--help' || arg == '-h') {
       map['help'] = 'true';
+    } else if (arg == '--watch' || arg == '-w') {
+      map['watch'] = 'true';
     } else if (arg == '--status' || arg == '-s') {
       map['status'] = 'true';
     } else if (arg == '--reset' || arg == '-r') {
@@ -844,6 +889,7 @@ Fases disponibles (en orden secuencial):
   8. optimizacion      : Mide tiempos de ejecución de tests y reporta métricas
 
 Comandos adicionales:
+  dart run tool/harness.dart --watch (-w)      : Ejecuta los tests en modo observador (watch mode continuo)
   dart run tool/harness.dart --status          : Muestra el estado actual del arnés
   dart run tool/harness.dart --reset           : Reinicia el estado del arnés
   dart run tool/harness.dart --install-hooks   : Instala los Git Hooks de aislamiento de ambientes

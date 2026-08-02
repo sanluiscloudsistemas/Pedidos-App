@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../widgets/common/list_header_summary.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
+import '../widgets/common/search_filter_bar.dart';
+import '../widgets/common/status_pill_tag.dart';
+
 /// Modelo de datos para un Reparto
 class RepartoModel {
   final String fecha;
@@ -137,214 +144,65 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.help_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 8),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.person_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 12),
-            ],
-          ),
-        ],
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Breadcrumb Navigation
-              Row(
-                children: const [
-                  Icon(Icons.chevron_left, size: 18, color: Color(0xFF757575)),
-                  Text(
-                    'Inicio',
-                    style: TextStyle(color: Color(0xFF757575), fontSize: 13),
+              // Buscador de Repartos por zona o código
+              SearchFilterBar(
+                controller: _searchController,
+                hintText: 'Buscar reparto por nombre, código o zona...',
+                onSearch: () => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+
+              // Etiquetas Pills de Filtro Interactivo por Estado
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  StatusPillTag.active(
+                    label: 'ABIERTO (${_countByEstado("ABIERTO")})',
+                    isSelected: _filterAbierto,
+                    onTap: () => setState(() => _filterAbierto = !_filterAbierto),
                   ),
-                  Text(
-                    '  \\  ',
-                    style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13),
+                  StatusPillTag.pending(
+                    label: 'EN CARGA (${_countByEstado("EN CARGA")})',
+                    isSelected: _filterEnCarga,
+                    onTap: () => setState(() => _filterEnCarga = !_filterEnCarga),
                   ),
-                  Text(
-                    'Mis Repartos',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF212121),
-                      fontSize: 14,
-                    ),
+                  StatusPillTag.inactive(
+                    label: 'FINALIZADO (${_countByEstado("FINALIZADO")})',
+                    isSelected: _filterFinalizado,
+                    onTap: () => setState(() => _filterFinalizado = !_filterFinalizado),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-
-              // Buscador de Repartos
-              TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Buscar...',
-                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF757575)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Sección Filtros: Estado
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFEEEEEE)),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: ExpansionTile(
-                  initiallyExpanded: true,
-                  shape: const Border(),
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.check_box_outlined, size: 18, color: Color(0xFF616161)),
-                          SizedBox(width: 8),
-                          Text(
-                            'Estado',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: Color(0xFF212121),
-                            ),
-                          ),
-                        ],
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _filterFinalizado = false;
-                            _filterAbierto = false;
-                            _filterEnCarga = false;
-                          });
-                        },
-                        child: const Text(
-                          'Borrar',
-                          style: TextStyle(color: Color(0xFF1976D2), fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-                  children: [
-                    CheckboxListTile(
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: Text('FINALIZADO (${_countByEstado("FINALIZADO")})', style: const TextStyle(fontSize: 13)),
-                      value: _filterFinalizado,
-                      onChanged: (val) => setState(() => _filterFinalizado = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: Text('ABIERTO (${_countByEstado("ABIERTO")})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      value: _filterAbierto,
-                      onChanged: (val) => setState(() => _filterAbierto = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: Text('EN CARGA (${_countByEstado("EN CARGA")})', style: const TextStyle(fontSize: 13)),
-                      value: _filterEnCarga,
-                      onChanged: (val) => setState(() => _filterEnCarga = val ?? false),
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 16),
 
-              // Recuento total, Filtros Activos y Restablecer
+              // Summary Header y botón de restablecer
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Recuento Total de Filas ${repartosList.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF212121),
-                    ),
+                  ListHeaderSummary(
+                    count: repartosList.length,
+                    label: 'repartos',
                   ),
                   TextButton.icon(
                     onPressed: _resetFilters,
-                    icon: const Icon(Icons.refresh, size: 16, color: Color(0xFF616161)),
+                    icon: const Icon(Icons.refresh, size: 16, color: AppColors.textSecondary),
                     label: const Text(
                       'Restablecer',
-                      style: TextStyle(color: Color(0xFF424242), fontSize: 13),
+                      style: TextStyle(color: AppColors.textDark, fontSize: 13),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Chips / Tags de Filtro Activo (ej. Estado ABIERTO [X])
-              Wrap(
-                spacing: 8,
-                children: [
-                  if (_filterAbierto)
-                    _buildActiveFilterChip('Estado  ABIERTO', () {
-                      setState(() => _filterAbierto = false);
-                    }),
-                  if (_filterFinalizado)
-                    _buildActiveFilterChip('Estado  FINALIZADO', () {
-                      setState(() => _filterFinalizado = false);
-                    }),
-                  if (_filterEnCarga)
-                    _buildActiveFilterChip('Estado  EN CARGA', () {
-                      setState(() => _filterEnCarga = false);
-                    }),
                 ],
               ),
               const SizedBox(height: 12),
@@ -353,29 +211,24 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  columnSpacing: 16,
+                  columnSpacing: 20,
                   headingRowHeight: 40,
-                  dataRowMinHeight: 56,
-                  dataRowMaxHeight: 80,
-                  border: TableBorder.all(color: const Color(0xFFEEEEEE), width: 1),
+                  dataRowMinHeight: 52,
+                  dataRowMaxHeight: 75,
+                  border: TableBorder.all(color: AppColors.cardBorder, width: 1),
                   headingRowColor: WidgetStateProperty.all(const Color(0xFFFAFAFA)),
                   columns: const [
                     DataColumn(
-                      label: Row(
-                        children: [
-                          Text('Fecha ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
-                          Icon(Icons.swap_vert, size: 16, color: Color(0xFF1976D2)),
-                        ],
-                      ),
+                      label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                     DataColumn(
-                      label: Text('Codigo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
+                      label: Text('Codigo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                     DataColumn(
                       label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
                     ),
                     DataColumn(
-                      label: Text('Descripcion', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
+                      label: Text('Descripcion', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                     DataColumn(
                       label: Text('Zona', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
@@ -383,39 +236,24 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
                   ],
                   rows: repartosList.map((r) {
                     return DataRow(cells: [
+                      DataCell(Text(r.fecha, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
+                      DataCell(Text(r.codigo, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
                       DataCell(
                         Text(
-                          r.fecha,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          r.codigo,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
-                        ),
-                      ),
-                      DataCell(
-                        SizedBox(
-                          width: 130,
-                          child: Text(
-                            r.nombre,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF212121),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          r.nombre,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF1976D2),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       DataCell(
                         SizedBox(
-                          width: 130,
+                          width: 140,
                           child: Text(
                             r.descripcion,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
+                            style: const TextStyle(fontSize: 12, color: AppColors.textDark),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -423,15 +261,11 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
                       ),
                       DataCell(
                         SizedBox(
-                          width: 180,
+                          width: 220,
                           child: Text(
                             r.zona,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF424242),
-                              fontWeight: FontWeight.w400,
-                            ),
-                            maxLines: 3,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF1976D2)),
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -443,31 +277,6 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildActiveFilterChip(String label, VoidCallback onRemove) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEEEEE),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
-          ),
-          const SizedBox(width: 4),
-          InkWell(
-            onTap: onRemove,
-            child: const Icon(Icons.close, size: 14, color: Color(0xFF616161)),
-          ),
-        ],
       ),
     );
   }

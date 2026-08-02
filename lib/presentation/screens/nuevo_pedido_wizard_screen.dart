@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../notifiers/connectivity_notifier.dart';
+import '../notifiers/sync_notifier.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
 
 /// Modelo borrador para un Item de Pedido
 class OrderItemDraft {
@@ -77,7 +84,6 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   void initState() {
     super.initState();
     _selectedCliente = widget.clienteInicial ?? _clientesDisponibles.first;
-    // Agregar un item por defecto de muestra si está vacío
     _items.add(
       const OrderItemDraft(
         codigo: '651',
@@ -125,58 +131,54 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
     });
   }
 
+  void _confirmarPedido(BuildContext context) async {
+    final syncNotifier = Provider.of<SyncNotifier>(context, listen: false);
+
+    final mappedItems = _items
+        .map((it) => {
+              'codigo': it.codigo,
+              'descripcion': it.descripcion,
+              'cantidad': it.cantidad,
+              'precioUnitario': it.precioUnitario,
+              'descuento': it.descuento,
+              'total': it.total,
+            })
+        .toList();
+
+    await syncNotifier.saveOrderOffline(
+      cliente: _selectedCliente,
+      condicionVenta: _selectedCondicionVenta,
+      reparto: _selectedReparto,
+      totalMonto: _totalMonto,
+      fechaGeneracion: '31/07/2026',
+      items: mappedItems,
+    );
+
+    if (context.mounted) {
+      final isOnline = Provider.of<ConnectivityNotifier>(context, listen: false).isConnected;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isOnline
+                ? '¡Pedido creado y sincronizado con la nube!'
+                : '¡Pedido guardado en la base de datos local (Drift)! Se sincronizará automáticamente al reconectarse a Internet.',
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.help_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 8),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.person_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 12),
-            ],
-          ),
-        ],
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: Column(
         children: [
           Expanded(
@@ -501,16 +503,11 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
             const Spacer(),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F),
+                backgroundColor: AppColors.primaryRed,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('¡Pedido creado y guardado con éxito!')),
-                );
-                Navigator.pop(context);
-              },
+              onPressed: () => _confirmarPedido(context),
               child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],

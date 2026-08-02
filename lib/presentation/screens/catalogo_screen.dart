@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_styles.dart';
+import '../widgets/common/list_header_summary.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
+import '../widgets/common/search_filter_bar.dart';
+
 /// Modelo de datos para un Producto en el Catálogo
 class ProductoCatalogoModel {
   final String codigo;
@@ -132,86 +139,30 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.help_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 8),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.person_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 12),
-            ],
-          ),
-        ],
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Buscador de Productos
-              TextField(
+              // Buscador de Productos con botón "Ir"
+              SearchFilterBar(
                 controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Buscar...',
-                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF757575)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                ),
+                hintText: 'Buscar producto por nombre o código...',
+                onSearch: () => setState(() {}),
               ),
               const SizedBox(height: 12),
 
-              // Sección Filtros: Categoria
+              // Sección Filtros: Categoría
               Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFEEEEEE)),
-                  borderRadius: BorderRadius.circular(4),
+                decoration: AppStyles.cardDecoration(
+                  backgroundColor: Colors.white,
+                  borderColor: AppColors.cardBorder,
                 ),
                 child: ExpansionTile(
                   initiallyExpanded: true,
@@ -219,15 +170,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                   title: Row(
                     children: const [
-                      Icon(Icons.check_box_outlined, size: 18, color: Color(0xFF616161)),
+                      Icon(Icons.check_box_outlined, size: 18, color: AppColors.textSecondary),
                       SizedBox(width: 8),
                       Text(
-                        'Categoria',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF212121),
-                        ),
+                        'Categoría',
+                        style: AppStyles.sectionTitleStyle,
                       ),
                     ],
                   ),
@@ -240,7 +187,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                         controlAffinity: ListTileControlAffinity.leading,
                         title: Text(
                           '${entry.key} (${entry.value})',
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF424242)),
+                          style: const TextStyle(fontSize: 13, color: AppColors.textDark),
                         ),
                         value: _selectedCategorias.contains(entry.key),
                         onChanged: (val) => _toggleCategoria(entry.key, val),
@@ -273,20 +220,16 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Recuento Total de Filas 791',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF212121),
-                    ),
+                  ListHeaderSummary(
+                    count: productosList.length,
+                    label: 'productos',
                   ),
                   TextButton.icon(
                     onPressed: _resetFilters,
-                    icon: const Icon(Icons.refresh, size: 16, color: Color(0xFF616161)),
+                    icon: const Icon(Icons.refresh, size: 16, color: AppColors.textSecondary),
                     label: const Text(
                       'Restablecer',
-                      style: TextStyle(color: Color(0xFF424242), fontSize: 13),
+                      style: TextStyle(color: AppColors.textDark, fontSize: 13),
                     ),
                   ),
                 ],
@@ -301,7 +244,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   headingRowHeight: 44,
                   dataRowMinHeight: 70,
                   dataRowMaxHeight: 90,
-                  border: TableBorder.all(color: const Color(0xFFEEEEEE), width: 1),
+                  border: TableBorder.all(color: AppColors.cardBorder, width: 1),
                   headingRowColor: WidgetStateProperty.all(const Color(0xFFFAFAFA)),
                   columns: const [
                     DataColumn(
@@ -344,7 +287,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                       DataCell(
                         Text(
                           p.codigo,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
+                          style: const TextStyle(fontSize: 12, color: AppColors.textDark),
                         ),
                       ),
                       DataCell(
@@ -354,7 +297,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                             p.descripcion,
                             style: const TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF212121),
+                              color: AppColors.textDark,
                               fontWeight: FontWeight.w400,
                             ),
                             maxLines: 3,
@@ -365,7 +308,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                       DataCell(
                         Text(
                           formattedPrecio,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
+                          style: const TextStyle(fontSize: 12, color: AppColors.textDark),
                         ),
                       ),
                       DataCell(
@@ -373,23 +316,22 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                           width: 64,
                           height: 64,
                           margin: const EdgeInsets.symmetric(vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                          decoration: AppStyles.cardDecoration(
+                            backgroundColor: Colors.white,
+                            borderColor: AppColors.cardBorder,
                           ),
                           child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: const [
-                                Icon(Icons.cloud_queue, size: 24, color: Color(0xFFD32F2F)),
+                                Icon(Icons.cloud_queue, size: 24, color: AppColors.primaryRed),
                                 SizedBox(height: 2),
                                 Text(
                                   'Don Emilio',
                                   style: TextStyle(
                                     fontSize: 8,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFFD32F2F),
+                                    color: AppColors.primaryRed,
                                   ),
                                 ),
                               ],

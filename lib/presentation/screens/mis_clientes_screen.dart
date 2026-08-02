@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_styles.dart';
+import '../widgets/common/list_header_summary.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
+import '../widgets/common/search_filter_bar.dart';
 import 'cliente_detail_screen.dart';
 import 'nuevo_pedido_wizard_screen.dart';
 
@@ -105,121 +111,53 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.help_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 8),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.person_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 12),
-            ],
-          ),
-        ],
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Buscador superior con dropdown e icono Ir
+              // Buscador Superior
+              SearchFilterBar(
+                controller: _searchController,
+                hintText: 'Buscar cliente por nombre, CUIT o código...',
+                onSearch: () => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+
+              // Dropdown Acciones y Recuento
               Row(
                 children: [
-                  Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFCCCCCC)),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(4),
-                        bottomLeft: Radius.circular(4),
-                      ),
-                      color: const Color(0xFFFAFAFA),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.search, size: 18, color: Color(0xFF616161)),
-                        Icon(Icons.keyboard_arrow_down, size: 14, color: Color(0xFF616161)),
-                      ],
-                    ),
-                  ),
                   Expanded(
-                    child: SizedBox(
+                    child: Container(
                       height: 40,
-                      child: TextField(
-                        controller: _searchController,
-                        style: const TextStyle(fontSize: 14),
-                        decoration: const InputDecoration(
-                          hintText: '',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
-                            borderSide: BorderSide(color: Color(0xFFCCCCCC)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
-                            borderSide: BorderSide(color: Color(0xFFCCCCCC)),
-                          ),
-                        ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: AppStyles.cardDecoration(
+                        backgroundColor: Colors.white,
+                        borderColor: AppColors.cardBorder,
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 40,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFCCCCCC)),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(4),
-                            bottomRight: Radius.circular(4),
-                          ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedAccion,
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+                          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
+                          items: const [
+                            DropdownMenuItem(value: 'Acciones', child: Text('Acciones')),
+                            DropdownMenuItem(value: 'exportar', child: Text('Exportar Clientes')),
+                            DropdownMenuItem(value: 'actualizar', child: Text('Actualizar Datos')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _selectedAccion = val);
+                            }
+                          },
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      onPressed: () {
-                        setState(() {});
-                      },
-                      child: const Text(
-                        'Ir',
-                        style: TextStyle(color: Color(0xFF424242), fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ),
@@ -227,61 +165,18 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Dropdown Acciones
-              Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFCCCCCC)),
-                  borderRadius: BorderRadius.circular(4),
-                  color: Colors.white,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedAccion,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF616161)),
-                    style: const TextStyle(color: Color(0xFF424242), fontSize: 14),
-                    items: const [
-                      DropdownMenuItem(value: 'Acciones', child: Text('Acciones')),
-                      DropdownMenuItem(value: 'exportar', child: Text('Exportar Clientes')),
-                      DropdownMenuItem(value: 'actualizar', child: Text('Actualizar Datos')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _selectedAccion = val);
-                      }
-                    },
-                  ),
-                ),
+              // Summary Header con botón Crear
+              ListHeaderSummary(
+                count: clientesList.length,
+                label: 'clientes',
+                actionButtonText: 'Crear',
+                onActionButtonPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Abriendo formulario de creación de cliente...')),
+                  );
+                },
               ),
               const SizedBox(height: 12),
-
-              // Botón Primario Rojo "Crear"
-              SizedBox(
-                height: 42,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD32F2F),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Abriendo formulario de creación de cliente...')),
-                    );
-                  },
-                  child: const Text(
-                    'Crear',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
 
               // Tabla de Clientes
               SingleChildScrollView(
@@ -291,12 +186,10 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                   headingRowHeight: 40,
                   dataRowMinHeight: 52,
                   dataRowMaxHeight: 70,
-                  border: TableBorder.all(color: const Color(0xFFEEEEEE), width: 1),
+                  border: TableBorder.all(color: AppColors.cardBorder, width: 1),
                   headingRowColor: WidgetStateProperty.all(const Color(0xFFFAFAFA)),
                   columns: const [
-                    DataColumn(
-                      label: SizedBox(width: 24),
-                    ),
+                    DataColumn(label: SizedBox(width: 24)),
                     DataColumn(
                       label: Text(
                         'Codigo',
@@ -358,7 +251,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                       DataCell(
                         Text(
                           c.codigo,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
+                          style: const TextStyle(fontSize: 12, color: AppColors.textDark),
                         ),
                       ),
                       DataCell(
@@ -402,7 +295,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                               c.nombre,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF212121),
+                                color: AppColors.textDark,
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 2,
@@ -414,7 +307,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                       DataCell(
                         Text(
                           c.documento,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
+                          style: const TextStyle(fontSize: 12, color: AppColors.textDark),
                         ),
                       ),
                       DataCell(
@@ -422,7 +315,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                           c.tipoIva,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF424242),
+                            color: AppColors.textDark,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

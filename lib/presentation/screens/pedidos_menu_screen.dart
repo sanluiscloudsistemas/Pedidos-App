@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_styles.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
+
 /// Modelo para los ítems del menú de Pedidos
 class PedidoMenuItem {
   final String title;
@@ -58,58 +63,12 @@ class PedidosMenuScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            letterSpacing: 1.0,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.cloud_download_outlined, color: Colors.white, size: 22),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 22),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.help_outline, color: Colors.white, size: 20),
-              const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              const SizedBox(width: 10),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.person_outline, color: Colors.white, size: 20),
-              const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              const SizedBox(width: 12),
-            ],
-          ),
-        ],
+      backgroundColor: AppColors.background,
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         itemCount: _items.length,
@@ -123,13 +82,12 @@ class PedidosMenuScreen extends StatelessWidget {
   }
 
   Widget _buildMenuItemCard(BuildContext context, PedidoMenuItem item) {
-    final cardBgColor = item.isSelected ? const Color(0xFFFFEBEE) : Colors.white;
+    final cardBgColor = item.isSelected ? AppColors.lightRedBg : Colors.white;
 
     return Container(
-      decoration: BoxDecoration(
-        color: cardBgColor,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+      decoration: AppStyles.cardDecoration(
+        backgroundColor: cardBgColor,
+        borderColor: item.isSelected ? AppColors.primaryRed : AppColors.cardBorder,
       ),
       child: Material(
         color: Colors.transparent,
@@ -149,14 +107,14 @@ class PedidosMenuScreen extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF2B2B2B),
+                        color: AppColors.textDark,
                       ),
                     ),
                     Container(
                       width: 40,
                       height: 40,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFD32F2F),
+                        color: AppColors.primaryRed,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -168,14 +126,11 @@ class PedidosMenuScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                const Divider(height: 1, color: AppColors.cardBorder),
                 const SizedBox(height: 10),
                 Text(
                   item.subtitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF757575),
-                  ),
+                  style: AppStyles.subtitleStyle,
                 ),
               ],
             ),

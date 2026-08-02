@@ -32,4 +32,12 @@ class ApiService {
       throw Exception('Error en la autenticación: ${e.message}');
     }
   }
+
+  Future<Response> post(String path, {dynamic data}) async {
+    try {
+      return await _dio.post(path, data: data);
+    } on DioException catch (e) {
+      throw Exception('Error en petición POST a $path: ${e.message}');
+    }
+  }
 }

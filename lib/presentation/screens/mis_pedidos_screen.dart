@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'nuevo_pedido_wizard_screen.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_styles.dart';
+import '../../domain/repositories/sync_repository.dart';
+import '../notifiers/sync_notifier.dart';
+import '../widgets/common/list_header_summary.dart';
+import '../widgets/common/preventa_app_bar.dart';
+import '../widgets/common/preventa_drawer.dart';
+import '../widgets/common/search_filter_bar.dart';
 
 /// Modelo de datos para un Pedido en la vista de lista
 class PedidoItemModel {
@@ -111,21 +119,36 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
     super.dispose();
   }
 
-  List<PedidoItemModel> get _pedidosFiltrados {
-    return _pedidosOriginales.where((p) {
-      // Filtro de Búsqueda por texto (Cliente o Código)
+  List<PedidoItemModel> _getCombinedPedidos(List<FullLocalOrder> localOrders) {
+    final localItems = localOrders.map((full) {
+      final statusLabel = full.order.syncStatus == 'PENDING_SYNC'
+          ? 'PENDIENTE SYNC'
+          : (full.order.syncStatus == 'SYNC_ERROR' ? 'ERROR SYNC' : 'FINALIZADO');
+      return PedidoItemModel(
+        fechaGeneracion: full.order.fechaGeneracion,
+        codigo: 'LOC-${full.order.id}',
+        cliente: full.order.cliente,
+        monto: full.order.totalMonto,
+        estado: statusLabel,
+      );
+    }).toList();
+
+    return [...localItems, ..._pedidosOriginales];
+  }
+
+  List<PedidoItemModel> _getPedidosFiltrados(List<PedidoItemModel> allPedidos) {
+    return allPedidos.where((p) {
       final query = _searchController.text.toLowerCase().trim();
       final matchSearch = query.isEmpty ||
           p.cliente.toLowerCase().contains(query) ||
           p.codigo.toLowerCase().contains(query);
 
-      // Filtro por casillas de Estado
       final hasStatusFilter = _filterFinalizado || _filterNuevo || _filterPendiente;
       if (!hasStatusFilter) return matchSearch;
 
-      final matchState = (_filterFinalizado && p.estado == 'FINALIZADO') ||
+      final matchState = (_filterFinalizado && (p.estado == 'FINALIZADO' || p.estado == 'SYNCED')) ||
           (_filterNuevo && p.estado == 'NUEVO') ||
-          (_filterPendiente && p.estado == 'PENDIENTE');
+          (_filterPendiente && (p.estado == 'PENDIENTE' || p.estado == 'PENDIENTE SYNC'));
 
       return matchSearch && matchState;
     }).toList();
@@ -143,130 +166,89 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   Color _getEstadoColor(String estado) {
     switch (estado.toUpperCase()) {
       case 'FINALIZADO':
-        return const Color(0xFFD32F2F); // Rojo corporativo
+        return AppColors.primaryRed;
       case 'NUEVO':
-        return const Color(0xFF1976D2); // Azul
+        return const Color(0xFF1976D2);
+      case 'PENDIENTE SYNC':
       case 'PENDIENTE':
-        return const Color(0xFFF57C00); // Naranja
+        return AppColors.warningOrange;
+      case 'ERROR SYNC':
+        return Colors.red;
       default:
-        return const Color(0xFF616161);
+        return AppColors.textSecondary;
     }
   }
 
-  int _countByEstado(String estado) {
-    return _pedidosOriginales.where((p) => p.estado == estado).length;
+  int _countByEstado(String estado, List<PedidoItemModel> allPedidos) {
+    return allPedidos.where((p) => p.estado == estado).length;
   }
 
   @override
   Widget build(BuildContext context) {
-    final pedidosList = _pedidosFiltrados;
+    final syncNotifier = Provider.of<SyncNotifier>(context);
+    final allPedidos = _getCombinedPedidos(syncNotifier.localOrders);
+    final pedidosList = _getPedidosFiltrados(allPedidos);
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 1,
-        titleSpacing: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: const Text(
-          'PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.help_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 8),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.person_outline, color: Colors.white, size: 18),
-              Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-              SizedBox(width: 12),
-            ],
-          ),
-        ],
+      appBar: const PreventaAppBar(
+        title: 'PEDIDOS',
+        showBackButton: true,
       ),
+      drawer: const PreventaDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Breadcrumb Navigation
-              Row(
-                children: const [
-                  Icon(Icons.chevron_left, size: 18, color: Color(0xFF757575)),
-                  Text(
-                    'Inicio',
-                    style: TextStyle(color: Color(0xFF757575), fontSize: 13),
+              if (syncNotifier.pendingSyncCount > 0)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.warningOrange),
                   ),
-                  Text(
-                    '  \\  ',
-                    style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13),
-                  ),
-                  Text(
-                    'Mis Pedidos',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF212121),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Buscador de Pedidos / Cliente
-              TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Buscar cliente o código...',
-                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF757575)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off, color: AppColors.warningOrange, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Hay ${syncNotifier.pendingSyncCount} pedido(s) guardado(s) offline pendiente(s) de sincronizar.',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFE65100), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      if (syncNotifier.isSyncing)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warningOrange),
+                        )
+                      else
+                        TextButton(
+                          onPressed: () => syncNotifier.syncPendingOrdersNow(),
+                          child: const Text('Sincronizar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                    ],
                   ),
                 ),
+
+              // Buscador de Pedidos / Cliente
+              SearchFilterBar(
+                controller: _searchController,
+                hintText: 'Buscar pedido por cliente o código...',
+                onSearch: () => setState(() {}),
               ),
               const SizedBox(height: 12),
 
               // Sección Filtros: Estado
               Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFEEEEEE)),
-                  borderRadius: BorderRadius.circular(4),
+                decoration: AppStyles.cardDecoration(
+                  backgroundColor: Colors.white,
+                  borderColor: AppColors.cardBorder,
                 ),
                 child: ExpansionTile(
                   initiallyExpanded: true,
@@ -274,15 +256,11 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
                   tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                   title: Row(
                     children: const [
-                      Icon(Icons.check_box_outlined, size: 18, color: Color(0xFF616161)),
+                      Icon(Icons.check_box_outlined, size: 18, color: AppColors.textSecondary),
                       SizedBox(width: 8),
                       Text(
                         'Estado',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF212121),
-                        ),
+                        style: AppStyles.sectionTitleStyle,
                       ),
                     ],
                   ),
@@ -290,21 +268,21 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
                     CheckboxListTile(
                       dense: true,
                       controlAffinity: ListTileControlAffinity.leading,
-                      title: Text('FINALIZADO (${_countByEstado("FINALIZADO")})', style: const TextStyle(fontSize: 13)),
+                      title: Text('FINALIZADO (${_countByEstado("FINALIZADO", allPedidos)})', style: const TextStyle(fontSize: 13)),
                       value: _filterFinalizado,
                       onChanged: (val) => setState(() => _filterFinalizado = val ?? false),
                     ),
                     CheckboxListTile(
                       dense: true,
                       controlAffinity: ListTileControlAffinity.leading,
-                      title: Text('NUEVO (${_countByEstado("NUEVO")})', style: const TextStyle(fontSize: 13)),
+                      title: Text('NUEVO (${_countByEstado("NUEVO", allPedidos)})', style: const TextStyle(fontSize: 13)),
                       value: _filterNuevo,
                       onChanged: (val) => setState(() => _filterNuevo = val ?? false),
                     ),
                     CheckboxListTile(
                       dense: true,
                       controlAffinity: ListTileControlAffinity.leading,
-                      title: Text('PENDIENTE (${_countByEstado("PENDIENTE")})', style: const TextStyle(fontSize: 13)),
+                      title: Text('PENDIENTE (${_countByEstado("PENDIENTE", allPedidos) + _countByEstado("PENDIENTE SYNC", allPedidos)})', style: const TextStyle(fontSize: 13)),
                       value: _filterPendiente,
                       onChanged: (val) => setState(() => _filterPendiente = val ?? false),
                     ),
@@ -313,56 +291,27 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Recuento total de filas y botones de acción
+              // Recuento total de filas y botón restablecer
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Recuento Total de Filas ${pedidosList.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF212121),
-                    ),
+                  ListHeaderSummary(
+                    count: pedidosList.length,
+                    label: 'pedidos',
                   ),
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          side: const BorderSide(color: Color(0xFFCCCCCC)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const NuevoPedidoWizardScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.assignment_add, size: 16, color: Color(0xFF616161)),
-                        label: const Text(
-                          'Pedido',
-                          style: TextStyle(color: Color(0xFF424242), fontSize: 13),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton.icon(
-                        onPressed: _resetFilters,
-                        icon: const Icon(Icons.refresh, size: 16, color: Color(0xFF616161)),
-                        label: const Text(
-                          'Restablecer',
-                          style: TextStyle(color: Color(0xFF424242), fontSize: 13),
-                        ),
-                      ),
-                    ],
+                  TextButton.icon(
+                    onPressed: _resetFilters,
+                    icon: const Icon(Icons.refresh, size: 16, color: AppColors.textSecondary),
+                    label: const Text(
+                      'Restablecer',
+                      style: TextStyle(color: AppColors.textDark, fontSize: 13),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // Tabla de Datos
+              // Tabla de Datos de Pedidos
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
@@ -370,7 +319,7 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
                   headingRowHeight: 40,
                   dataRowMinHeight: 48,
                   dataRowMaxHeight: 64,
-                  border: TableBorder.all(color: const Color(0xFFEEEEEE), width: 1),
+                  border: TableBorder.all(color: AppColors.cardBorder, width: 1),
                   headingRowColor: WidgetStateProperty.all(const Color(0xFFFAFAFA)),
                   columns: const [
                     DataColumn(
@@ -393,8 +342,8 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
                   rows: pedidosList.map((p) {
                     final formattedMonto = '\$${p.monto.toStringAsFixed(2).replaceAll('.', ',')}';
                     return DataRow(cells: [
-                      DataCell(Text(p.fechaGeneracion, style: const TextStyle(fontSize: 12))),
-                      DataCell(Text(p.codigo, style: const TextStyle(fontSize: 12))),
+                      DataCell(Text(p.fechaGeneracion, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
+                      DataCell(Text(p.codigo, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
                       DataCell(
                         InkWell(
                           onTap: () {
@@ -417,7 +366,7 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
                           ),
                         ),
                       ),
-                      DataCell(Text(formattedMonto, style: const TextStyle(fontSize: 12))),
+                      DataCell(Text(formattedMonto, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
                       DataCell(
                         Text(
                           p.estado,
