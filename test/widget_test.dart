@@ -1,30 +1,50 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
-import 'package:preventa/main.dart';
+import 'package:preventa/domain/entities/user_entity.dart';
+import 'package:preventa/domain/repositories/auth_repository.dart';
+import 'package:preventa/domain/usecases/login_use_case.dart';
+import 'package:preventa/presentation/notifiers/auth_notifier.dart';
+import 'package:preventa/presentation/screens/login_screen.dart';
+
+class FakeAuthRepository implements AuthRepository {
+  @override
+  Future<UserEntity?> login({
+    required String organizacion,
+    required String usuario,
+    required String contrasenia,
+  }) async {
+    return UserEntity(
+      session: 'fake_session',
+      usuario: usuario,
+      organizacion: organizacion,
+    );
+  }
+
+  @override
+  Future<UserEntity?> getCurrentUser() async => null;
+
+  @override
+  Future<void> logout() async {}
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Carga de pantalla de login smoke test', (WidgetTester tester) async {
+    final fakeRepo = FakeAuthRepository();
+    final loginUseCase = LoginUseCase(fakeRepo);
+    final authNotifier = AuthNotifier(loginUseCase);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthNotifier>.value(
+        value: authNotifier,
+        child: const MaterialApp(
+          home: LoginScreen(),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Ingreso Preventas'), findsOneWidget);
+    expect(find.text('Organización'), findsOneWidget);
   });
 }

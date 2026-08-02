@@ -1,7 +1,5 @@
 import 'package:drift/drift.dart';
 import 'package:drift_sqflite/drift_sqflite.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 
 part 'app_database.g.dart';
 
@@ -23,8 +21,6 @@ class AppDatabase extends _$AppDatabase {
 
 QueryExecutor _openConnection() {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = p.join(dbFolder.path, 'db.sqlite');
     return SqfliteQueryExecutor.inDatabaseFolder(path: 'db.sqlite');
   });
 }

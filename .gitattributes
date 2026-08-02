@@ -1,0 +1,5 @@
+# Exclusión de herramientas y artefactos de arnés de desarrollo en exportaciones/archives de Git
+tool/ export-ignore
+specs/ export-ignore
+.harness_state.json export-ignore
+.githooks/ export-ignore

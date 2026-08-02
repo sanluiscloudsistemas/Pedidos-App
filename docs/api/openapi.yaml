@@ -26,11 +26,47 @@ paths:
   /clientes:
     get:
       summary: Listar clientes
-      description: Obtiene la lista de clientes asignados al preventista.
+      description: Obtiene la lista de clientes asignados al preventista desde Oracle ORDS.
       responses:
         '200':
           description: Lista de clientes obtenida con éxito
+          content:
+            application/json:
+              example:
+                items: []
+                hasMore: false
+                limit: 25
+                offset: 0
+                count: 0
+                links:
+                  - rel: "self"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/clientes"
+                  - rel: "describedby"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/metadata-catalog/mobile/item"
+                  - rel: "first"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/clientes"
   /pedidos:
+    get:
+      summary: Consultar lista de pedidos
+      description: Obtiene la lista paginada de pedidos registrados desde Oracle ORDS.
+      responses:
+        '200':
+          description: Lista de pedidos obtenida con éxito
+          content:
+            application/json:
+              example:
+                items: []
+                hasMore: false
+                limit: 25
+                offset: 0
+                count: 0
+                links:
+                  - rel: "self"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/pedidos"
+                  - rel: "describedby"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/metadata-catalog/mobile/item"
+                  - rel: "first"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/pedidos"
     post:
       summary: Crear nuevo pedido
       description: Registra un nuevo pedido en el sistema central.
@@ -39,4 +75,48 @@ paths:
           description: Pedido creado con éxito
         '400':
           description: Error en los datos del pedido
+  /catalogo:
+    get:
+      summary: Consultar catálogo de productos
+      description: Obtiene el catálogo paginado de productos desde Oracle ORDS.
+      responses:
+        '200':
+          description: Respuesta de catálogo paginada obtenida con éxito
+          content:
+            application/json:
+              example:
+                items: []
+                hasMore: false
+                limit: 25
+                offset: 0
+                count: 0
+                links:
+                  - rel: "self"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/catalogo"
+                  - rel: "describedby"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/metadata-catalog/mobile/item"
+                  - rel: "first"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/catalogo"
+  /faltantes:
+    get:
+      summary: Consultar productos faltantes
+      description: Obtiene la lista paginada de productos o artículos faltantes desde Oracle ORDS.
+      responses:
+        '200':
+          description: Lista de faltantes obtenida con éxito
+          content:
+            application/json:
+              example:
+                items: []
+                hasMore: false
+                limit: 25
+                offset: 0
+                count: 0
+                links:
+                  - rel: "self"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/faltantes"
+                  - rel: "describedby"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/metadata-catalog/mobile/item"
+                  - rel: "first"
+                    href: "http://sanluiscloud.ddns.net/ords/sanluiscloud/mobile/faltantes"
 # Aquí se añadirán más rutas según la evolución del proyecto.
