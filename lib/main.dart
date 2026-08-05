@@ -22,7 +22,7 @@ Future<void> main() async {
   final appDatabase = AppDatabase();
   
   // 2. Repositorios
-  final authRepository = AuthRepositoryImpl(apiService);
+  final authRepository = AuthRepositoryImpl(apiService: apiService);
   final syncRepository = SyncRepositoryImpl(db: appDatabase, apiService: apiService);
   
   // 3. Casos de uso

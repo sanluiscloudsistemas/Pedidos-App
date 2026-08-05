@@ -16,17 +16,26 @@ class FakeAuthRepository implements AuthRepository {
     required String contrasenia,
   }) async {
     return UserEntity(
-      session: 'fake_session',
+      token: 'fake_session',
       usuario: usuario,
       organizacion: organizacion,
     );
   }
 
   @override
+  Future<UserEntity?> loginWithBiometrics() async => null;
+
+  @override
   Future<UserEntity?> getCurrentUser() async => null;
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<void> setBiometricEnabled(bool enabled) async {}
+
+  @override
+  Future<bool> isBiometricEnabled() async => false;
 }
 
 void main() {

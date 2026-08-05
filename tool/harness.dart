@@ -29,6 +29,7 @@ const List<String> validPhases = [
   'desarrollo-green',
   'clean-code',
   'refactor',
+  'pruebas-mutacion',
   'verificacion',
   'optimizacion',
 ];
@@ -50,7 +51,8 @@ class HarnessState {
     return HarnessState(
       feature: json['feature'] as String? ?? '',
       currentPhase: json['currentPhase'] as String? ?? '',
-      history: (json['history'] as List<dynamic>?)
+      history:
+          (json['history'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -59,11 +61,11 @@ class HarnessState {
   }
 
   Map<String, dynamic> toJson() => {
-        'feature': feature,
-        'currentPhase': currentPhase,
-        'history': history,
-        'updatedAt': updatedAt,
-      };
+    'feature': feature,
+    'currentPhase': currentPhase,
+    'history': history,
+    'updatedAt': updatedAt,
+  };
 
   HarnessState copyWith({
     String? feature,
@@ -146,15 +148,16 @@ void main(List<String> arguments) async {
         featureArg.isNotEmpty &&
         _slugify(featureArg) != currentState.feature) {
       print(
-          '❌ Error: Hay una característica en curso ("${currentState.feature}").');
-      print(
-          'No puedes cambiar a "$featureArg" sin completar u usar --reset.');
+        '❌ Error: Hay una característica en curso ("${currentState.feature}").',
+      );
+      print('No puedes cambiar a "$featureArg" sin completar u usar --reset.');
       exit(1);
     }
   } else {
     if (featureArg == null || featureArg.isEmpty) {
       print(
-          '❌ Error: Debe indicar la característica con --feature <nombre_feature> para iniciar el arnés.');
+        '❌ Error: Debe indicar la característica con --feature <nombre_feature> para iniciar el arnés.',
+      );
       exit(1);
     }
     featureSlug = _slugify(featureArg);
@@ -186,6 +189,9 @@ void main(List<String> arguments) async {
         break;
       case 'refactor':
         await _executeRefactor(featureSlug);
+        break;
+      case 'pruebas-mutacion':
+        await _executePruebasMutacion(featureSlug);
         break;
       case 'verificacion':
         await _executeVerificacion(featureSlug);
@@ -263,6 +269,9 @@ Característica: $feature
 - [ ] Aplicar descomposición de código general (`flutter-descomposicion-codigo-general`) en capas, Use Cases y Repository Pattern.
 - [ ] Formateo de código y refactor sin regresiones.
 
+## 🧬 5b. Fase Pruebas de Mutación
+- [ ] Pruebas de mutación completadas y evaluadas contra mutantes.
+
 ## ⚡ 6. Verificación y Optimización del Arnés
 - [ ] Verificación global y métricas de rendimiento de la suite de pruebas.
 ''');
@@ -325,7 +334,11 @@ class ${pascalName}Data {
     print('  ✓ Creadas firmas de tipos inmutables: ${typesFile.path}');
   }
 
-  _updateCheckInLog(feature, '## 🎨 2. Fase de Diseño', '- [x] Plantilla e interfaces inmutables generadas');
+  _updateCheckInLog(
+    feature,
+    '## 🎨 2. Fase de Diseño',
+    '- [x] Plantilla e interfaces inmutables generadas',
+  );
 }
 
 Future<void> _executePruebasRed(String feature) async {
@@ -335,7 +348,8 @@ Future<void> _executePruebasRed(String feature) async {
   final testFile = File('test/features/${feature}_test.dart');
 
   if (!testFile.existsSync()) {
-    testFile.writeAsStringSync('''import 'package:flutter_test/flutter_test.dart';
+    testFile.writeAsStringSync(
+      '''import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('$feature tests', () {
@@ -345,22 +359,28 @@ void main() {
     });
   });
 }
-''');
+''',
+    );
     print('  ✓ Creada plantilla de prueba RED: ${testFile.path}');
   }
 
   print('  ⏳ Ejecutando flutter test ${testFile.path}...');
-  final result = await Process.run('flutter', ['test', testFile.path], runInShell: true);
+  final result = await Process.run('flutter', [
+    'test',
+    testFile.path,
+  ], runInShell: true);
 
   final combinedOutput = '${result.stdout}\n${result.stderr}';
 
   if (result.exitCode == 0) {
     throw Exception(
-        'La prueba en ${testFile.path} PASÓ exitosamente, pero en la fase TDD RED debe FALLAR lógicamente.');
+      'La prueba en ${testFile.path} PASÓ exitosamente, pero en la fase TDD RED debe FALLAR lógicamente.',
+    );
   }
 
   // Verificar si el fallo fue por error de compilación / sintaxis
-  final isCompileError = combinedOutput.contains('Compilation failed') ||
+  final isCompileError =
+      combinedOutput.contains('Compilation failed') ||
       combinedOutput.contains('Error: ') ||
       combinedOutput.contains('Target of URI doesn\'t exist') ||
       combinedOutput.contains('Undefined name') ||
@@ -371,22 +391,34 @@ void main() {
     print(combinedOutput);
     print('---------------------------');
     throw Exception(
-        'La prueba falló por errores de SINTAXIS o COMPILACIÓN, no por un fallo lógico de aserción.');
+      'La prueba falló por errores de SINTAXIS o COMPILACIÓN, no por un fallo lógico de aserción.',
+    );
   }
 
-  print('  ✓ [✓ TDD RED] La prueba falló lógicamente como se esperaba (fase RED verificada).');
-  _updateCheckInLog(feature, '## 🔴 3. Fase Pruebas RED', '- [x] Test unitario creado y fallando lógicamente');
+  print(
+    '  ✓ [✓ TDD RED] La prueba falló lógicamente como se esperaba (fase RED verificada).',
+  );
+  _updateCheckInLog(
+    feature,
+    '## 🔴 3. Fase Pruebas RED',
+    '- [x] Test unitario creado y fallando lógicamente',
+  );
 }
 
 Future<void> _executeDesarrolloGreen(String feature) async {
-  print('🟢 [TDD GREEN] Ejecutando suite de pruebas para verificar fase GREEN...');
+  print(
+    '🟢 [TDD GREEN] Ejecutando suite de pruebas para verificar fase GREEN...',
+  );
 
   final testFile = File('test/features/${feature}_test.dart');
   if (!testFile.existsSync()) {
     throw Exception('No existe el archivo de prueba ${testFile.path}.');
   }
 
-  final result = await Process.run('flutter', ['test', testFile.path], runInShell: true);
+  final result = await Process.run('flutter', [
+    'test',
+    testFile.path,
+  ], runInShell: true);
 
   if (result.exitCode != 0) {
     print('\n----- DETALLE DE PRUEBAS FALLIDAS -----');
@@ -396,18 +428,27 @@ Future<void> _executeDesarrolloGreen(String feature) async {
   }
 
   print('  ✓ [✓ TDD GREEN] Todas las pruebas pasaron exitosamente.');
-  _updateCheckInLog(feature, '## 🟢 4. Fase Desarrollo GREEN', '- [x] Implementación completada y tests pasando exitosamente');
+  _updateCheckInLog(
+    feature,
+    '## 🟢 4. Fase Desarrollo GREEN',
+    '- [x] Implementación completada y tests pasando exitosamente',
+  );
 }
 
 Future<void> _executeCleanCode(String feature) async {
-  print('🧹 [CLEAN CODE] Ejecutando linter y verificando formateo de código...');
+  print(
+    '🧹 [CLEAN CODE] Ejecutando linter y verificando formateo de código...',
+  );
 
   final featureDir = 'lib/src/features/$feature';
   final featureDirObj = Directory(featureDir);
 
   if (featureDirObj.existsSync()) {
     print('  ⏳ Analizando estáticamente con flutter analyze $featureDir...');
-    final analyzeResult = await Process.run('flutter', ['analyze', featureDir], runInShell: true);
+    final analyzeResult = await Process.run('flutter', [
+      'analyze',
+      featureDir,
+    ], runInShell: true);
     if (analyzeResult.exitCode != 0) {
       print('\n----- ADVERTENCIAS / ERRORES DE LINTER -----');
       print(analyzeResult.stdout);
@@ -425,49 +466,239 @@ Future<void> _executeCleanCode(String feature) async {
     ], runInShell: true);
     if (formatResult.exitCode != 0) {
       print(formatResult.stdout);
-      throw Exception('Se detectó código sin formatear en $featureDir. Ejecute `dart format $featureDir`.');
+      throw Exception(
+        'Se detectó código sin formatear en $featureDir. Ejecute `dart format $featureDir`.',
+      );
     }
   } else {
-    print('  ℹ Directorio $featureDir no existe aún; ejecutando `flutter analyze` global...');
-    final analyzeResult = await Process.run('flutter', ['analyze'], runInShell: true);
+    print(
+      '  ℹ Directorio $featureDir no existe aún; ejecutando `flutter analyze` global...',
+    );
+    final analyzeResult = await Process.run('flutter', [
+      'analyze',
+    ], runInShell: true);
     if (analyzeResult.exitCode != 0) {
       throw Exception('`flutter analyze` global detectó problemas.');
     }
   }
 
   print('  ✓ [CLEAN CODE] Linter y formato validados sin observaciones.');
-  print('  💡 [SKILL] Verifique la descomposición de widgets (>100 líneas) usando `flutter-descomposicion-componentes`.');
-  print('  💡 [SKILL] Verifique la arquitectura en capas (Domain, Data, Presentation) usando `flutter-descomposicion-codigo-general`.');
-  _updateCheckInLog(feature, '## 🧹 5. Fase Clean Code & Refactor', '- [x] Análisis estático (`flutter analyze`) sin advertencias');
+  print(
+    '  💡 [SKILL] Verifique la descomposición de widgets (>100 líneas) usando `flutter-descomposicion-componentes`.',
+  );
+  print(
+    '  💡 [SKILL] Verifique la arquitectura en capas (Domain, Data, Presentation) usando `flutter-descomposicion-codigo-general`.',
+  );
+  _updateCheckInLog(
+    feature,
+    '## 🧹 5. Fase Clean Code & Refactor',
+    '- [x] Análisis estático (`flutter analyze`) sin advertencias',
+  );
 }
 
 Future<void> _executeRefactor(String feature) async {
   print('🔄 [REFACTOR] Re-validando tests tras refactorización...');
-  print('  💡 [SKILL] Aplicando criterios de composición (Widgets y Use Cases / Repositories).');
+  print(
+    '  💡 [SKILL] Aplicando criterios de composición (Widgets y Use Cases / Repositories).',
+  );
 
   final testFile = File('test/features/${feature}_test.dart');
   if (!testFile.existsSync()) {
     throw Exception('No existe la prueba ${testFile.path}.');
   }
 
-  final result = await Process.run('flutter', ['test', testFile.path], runInShell: true);
+  final result = await Process.run('flutter', [
+    'test',
+    testFile.path,
+  ], runInShell: true);
 
   if (result.exitCode != 0) {
     print('\n----- REGRESIÓN DE PRUEBAS DETECTADA -----');
     print('${result.stdout}\n${result.stderr}');
     print('------------------------------------------');
-    throw Exception('Se detectaron regresiones en las pruebas tras el refactor.');
+    throw Exception(
+      'Se detectaron regresiones en las pruebas tras el refactor.',
+    );
   }
 
   print('  ✓ [REFACTOR] Tests superados sin regresiones.');
-  _updateCheckInLog(feature, '## 🧹 5. Fase Clean Code & Refactor', '- [x] Formateo de código y refactor sin regresiones');
+  _updateCheckInLog(
+    feature,
+    '## 🧹 5. Fase Clean Code & Refactor',
+    '- [x] Formateo de código y refactor sin regresiones',
+  );
+}
+
+Future<void> _executePruebasMutacion(String feature) async {
+  print(
+    '🧬 [PRUEBAS DE MUTACIÓN] Evaluando la calidad y robustez del conjunto de pruebas...',
+  );
+
+  final List<File> targetFiles = [];
+  final featureDir = Directory('lib/src/features/$feature');
+  if (featureDir.existsSync()) {
+    final files = featureDir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where(
+          (f) =>
+              f.path.endsWith('.dart') &&
+              !f.path.contains('.g.dart') &&
+              !f.path.contains('.freezed.dart'),
+        );
+    targetFiles.addAll(files);
+  }
+
+  if (targetFiles.isEmpty) {
+    final libDir = Directory('lib');
+    if (libDir.existsSync()) {
+      final files = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where(
+            (f) =>
+                f.path.endsWith('.dart') &&
+                !f.path.contains('.g.dart') &&
+                !f.path.contains('.freezed.dart'),
+          );
+      targetFiles.addAll(files);
+    }
+  }
+
+  if (targetFiles.isEmpty) {
+    print('  ⚠️ No se encontraron archivos .dart para realizar mutaciones.');
+    _updateCheckInLog(
+      feature,
+      '## 🧬 5b. Fase Pruebas de Mutación',
+      '- [x] Pruebas de mutación completadas',
+    );
+    return;
+  }
+
+  final testFile = File('test/features/${feature}_test.dart');
+  final testArgs = testFile.existsSync() ? ['test', testFile.path] : ['test'];
+
+  print(
+    '  ⏳ Verificando que las pruebas pasen antes de inyectar mutaciones...',
+  );
+  final initialTestRun = await Process.run(
+    'flutter',
+    testArgs,
+    runInShell: true,
+  );
+  if (initialTestRun.exitCode != 0) {
+    throw Exception(
+      'No se pueden ejecutar pruebas de mutación: las pruebas ya fallan en el estado original.',
+    );
+  }
+
+  final Map<String, String> mutationOperators = {
+    '==': '!=',
+    '!=': '==',
+    '>=': '<',
+    '<=': '>',
+    ' > ': ' <= ',
+    ' < ': ' >= ',
+    ' && ': ' || ',
+    ' || ': ' && ',
+    ' + ': ' - ',
+    ' - ': ' + ',
+    'true': 'false',
+    'false': 'true',
+  };
+
+  int totalMutants = 0;
+  int killedMutants = 0;
+  int survivedMutants = 0;
+  final List<String> details = [];
+
+  for (final targetFile in targetFiles) {
+    final originalContent = targetFile.readAsStringSync();
+    final relativePath = targetFile.path;
+
+    for (final entry in mutationOperators.entries) {
+      final fromPattern = entry.key;
+      final toReplacement = entry.value;
+
+      int startIndex = 0;
+      while (true) {
+        final matchIndex = originalContent.indexOf(fromPattern, startIndex);
+        if (matchIndex == -1) break;
+
+        if (totalMutants >= 30) break;
+
+        final mutatedContent =
+            originalContent.substring(0, matchIndex) +
+            toReplacement +
+            originalContent.substring(matchIndex + fromPattern.length);
+
+        totalMutants++;
+
+        try {
+          targetFile.writeAsStringSync(mutatedContent);
+          final testResult = await Process.run(
+            'flutter',
+            testArgs,
+            runInShell: true,
+          );
+
+          if (testResult.exitCode != 0) {
+            killedMutants++;
+            details.add(
+              '  ✅ Mutante #$totalMutants ELIMINADO en $relativePath (reemplazado "$fromPattern" por "$toReplacement")',
+            );
+          } else {
+            survivedMutants++;
+            details.add(
+              '  ❌ Mutante #$totalMutants SOBREVIVIÓ en $relativePath (reemplazado "$fromPattern" por "$toReplacement")',
+            );
+          }
+        } finally {
+          targetFile.writeAsStringSync(originalContent);
+        }
+
+        startIndex = matchIndex + fromPattern.length;
+      }
+    }
+  }
+
+  print('\n📊 Resumen de Pruebas de Mutación:');
+  for (final detail in details.take(15)) {
+    print(detail);
+  }
+  if (details.length > 15) {
+    print('  ... y ${details.length - 15} mutantes más.');
+  }
+
+  final score = totalMutants > 0
+      ? (killedMutants / totalMutants * 100).toStringAsFixed(1)
+      : '100.0';
+  print(
+    '\n🎯 Mutation Score: $score% ($killedMutants/$totalMutants mutantes eliminados, $survivedMutants sobrevivientes)',
+  );
+
+  _updateCheckInLog(
+    feature,
+    '## 🧬 5b. Fase Pruebas de Mutación',
+    '- [x] Pruebas de mutación completadas y evaluadas contra mutantes.',
+  );
+
+  if (survivedMutants > 0 && double.parse(score) < 50.0) {
+    print(
+      '  ⚠️ [ADVERTENCIA MUTACIÓN] El Mutation Score ($score%) es bajo. Se recomienda robustecer la cobertura de tests.',
+    );
+  } else {
+    print('  ✓ [PRUEBAS DE MUTACIÓN] Evaluadas exitosamente.');
+  }
 }
 
 Future<void> _executeVerificacion(String feature) async {
   print('🔎 [VERIFICACIÓN] Chequeo global del proyecto Flutter...');
 
   print('  ⏳ Ejecutando flutter analyze global...');
-  final analyzeRes = await Process.run('flutter', ['analyze'], runInShell: true);
+  final analyzeRes = await Process.run('flutter', [
+    'analyze',
+  ], runInShell: true);
   if (analyzeRes.exitCode != 0) {
     print(analyzeRes.stdout);
     print(analyzeRes.stderr);
@@ -486,14 +717,19 @@ Future<void> _executeVerificacion(String feature) async {
 }
 
 Future<void> _executeOptimizacion(String feature) async {
-  print('⚡ [OPTIMIZACIÓN] Midiendo rendimiento de pruebas y actualizando métricas...');
+  print(
+    '⚡ [OPTIMIZACIÓN] Midiendo rendimiento de pruebas y actualizando métricas...',
+  );
 
   final testFile = File('test/features/${feature}_test.dart');
   final stopwatch = Stopwatch()..start();
 
   ProcessResult result;
   if (testFile.existsSync()) {
-    result = await Process.run('flutter', ['test', testFile.path], runInShell: true);
+    result = await Process.run('flutter', [
+      'test',
+      testFile.path,
+    ], runInShell: true);
   } else {
     result = await Process.run('flutter', ['test'], runInShell: true);
   }
@@ -509,7 +745,9 @@ Future<void> _executeOptimizacion(String feature) async {
 
   final isOptimal = elapsedMs <= 500;
   if (!isOptimal) {
-    print('  ⚠️ [ADVERTENCIA OPTIMIZACIÓN] Las pruebas tomaron ${elapsedMs}ms (> 500ms). Se recomienda optimizar mocks o dependencias.');
+    print(
+      '  ⚠️ [ADVERTENCIA OPTIMIZACIÓN] Las pruebas tomaron ${elapsedMs}ms (> 500ms). Se recomienda optimizar mocks o dependencias.',
+    );
   } else {
     print('  ✓ [OPTIMIZACIÓN] Rendimiento óptimo de pruebas (≤500ms).');
   }
@@ -567,7 +805,8 @@ void _validatePhaseSequence(HarnessState? state, String targetPhase) {
   if (state == null || state.currentPhase.isEmpty) {
     if (targetIndex != 0) {
       throw Exception(
-          'El arnés no se ha iniciado. Debe comenzar en la fase "${validPhases[0]}".');
+        'El arnés no se ha iniciado. Debe comenzar en la fase "${validPhases[0]}".',
+      );
     }
     return;
   }
@@ -583,7 +822,8 @@ void _validatePhaseSequence(HarnessState? state, String targetPhase) {
   // Bloquear saltos
   if (targetIndex > currentIndex + 1) {
     throw Exception(
-        'No se permite saltar fases. Estás en "${state.currentPhase}". La siguiente fase debe ser "${validPhases[currentIndex + 1]}".');
+      'No se permite saltar fases. Estás en "${state.currentPhase}". La siguiente fase debe ser "${validPhases[currentIndex + 1]}".',
+    );
   }
 
   // Permitir volver atrás a fases previas si es necesario refactorizar
@@ -621,8 +861,11 @@ void _injectOptimizationReport(String feature, int elapsedMs, bool isOptimal) {
   String content = logFile.readAsStringSync();
   const reportHeader = '## ⚡ 6. Verificación y Optimización del Arnés';
 
-  final statusText = isOptimal ? '✅ OPTIMIZADO (≤500ms)' : '⚠️ ADVERTENCIA (>500ms)';
-  final reportContent = '''$reportHeader
+  final statusText = isOptimal
+      ? '✅ OPTIMIZADO (≤500ms)'
+      : '⚠️ ADVERTENCIA (>500ms)';
+  final reportContent =
+      '''$reportHeader
 - **Duración de Pruebas Unitarias**: ${elapsedMs}ms
 - **Estado de Rendimiento**: $statusText
 - [x] Verificación global y métricas de rendimiento de la suite de pruebas.
@@ -641,13 +884,23 @@ void _injectOptimizationReport(String feature, int elapsedMs, bool isOptimal) {
 
 Future<void> _validateEnvironmentBranch() async {
   try {
-    final result = await Process.run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], runInShell: true);
+    final result = await Process.run('git', [
+      'rev-parse',
+      '--abbrev-ref',
+      'HEAD',
+    ], runInShell: true);
     if (result.exitCode == 0) {
       final currentBranch = (result.stdout as String).trim().toLowerCase();
       if (protectedDeploymentBranches.contains(currentBranch)) {
-        print('❌ Error: El arnés de desarrollo no se puede ejecutar en la rama de despliegue "$currentBranch".');
-        print('💡 Motivo: El arnés de desarrollo pertenece exclusivamente al entorno de desarrollo (ej. dev, feature/*, fix/*).');
-        print('   Los entornos QA, Pre-producción y Producción deben estar limpios de artefactos de desarrollo.');
+        print(
+          '❌ Error: El arnés de desarrollo no se puede ejecutar en la rama de despliegue "$currentBranch".',
+        );
+        print(
+          '💡 Motivo: El arnés de desarrollo pertenece exclusivamente al entorno de desarrollo (ej. dev, feature/*, fix/*).',
+        );
+        print(
+          '   Los entornos QA, Pre-producción y Producción deben estar limpios de artefactos de desarrollo.',
+        );
         exit(1);
       }
     }
@@ -659,34 +912,54 @@ Future<void> _validateEnvironmentBranch() async {
 void _checkPushBranch(String targetBranch) {
   final normalizedTarget = targetBranch.trim().toLowerCase();
   if (protectedDeploymentBranches.contains(normalizedTarget)) {
-    print('🛡️ [CHECK PUSH] Analizando payload para el despliegue a "$targetBranch"...');
-    
+    print(
+      '🛡️ [CHECK PUSH] Analizando payload para el despliegue a "$targetBranch"...',
+    );
+
     final trackedHarnessFiles = <String>[];
 
     try {
-      final resState = Process.runSync('git', ['ls-files', stateFilePath], runInShell: true);
-      if (resState.exitCode == 0 && (resState.stdout as String).trim().isNotEmpty) {
+      final resState = Process.runSync('git', [
+        'ls-files',
+        stateFilePath,
+      ], runInShell: true);
+      if (resState.exitCode == 0 &&
+          (resState.stdout as String).trim().isNotEmpty) {
         trackedHarnessFiles.add(stateFilePath);
       }
 
-      final resSpecs = Process.runSync('git', ['ls-files', 'specs'], runInShell: true);
-      if (resSpecs.exitCode == 0 && (resSpecs.stdout as String).trim().isNotEmpty) {
+      final resSpecs = Process.runSync('git', [
+        'ls-files',
+        'specs',
+      ], runInShell: true);
+      if (resSpecs.exitCode == 0 &&
+          (resSpecs.stdout as String).trim().isNotEmpty) {
         trackedHarnessFiles.add('specs/');
       }
     } catch (_) {}
 
     if (trackedHarnessFiles.isNotEmpty) {
-      print('❌ [DESPLIEGUE BLOQUEADO] Se detectaron artefactos del arnés seguidos en Git:');
+      print(
+        '❌ [DESPLIEGUE BLOQUEADO] Se detectaron artefactos del arnés seguidos en Git:',
+      );
       for (final file in trackedHarnessFiles) {
         print('   - $file');
       }
       print('\n💡 Instrucciones:');
-      print('   1. El arnés de desarrollo no debe estar rastreado en la rama de despliegue "$targetBranch".');
-      print('   2. Elimine los artefactos del rastreo de git (`git rm --cached <archivo>`).');
-      print('   3. Para subir código a $targetBranch, use una rama limpia sin artefactos de desarrollo.');
+      print(
+        '   1. El arnés de desarrollo no debe estar rastreado en la rama de despliegue "$targetBranch".',
+      );
+      print(
+        '   2. Elimine los artefactos del rastreo de git (`git rm --cached <archivo>`).',
+      );
+      print(
+        '   3. Para subir código a $targetBranch, use una rama limpia sin artefactos de desarrollo.',
+      );
       exit(1);
     }
-    print('  ✓ [CHECK PUSH] Rama de despliegue limpia de artefactos del arnés.');
+    print(
+      '  ✓ [CHECK PUSH] Rama de despliegue limpia de artefactos del arnés.',
+    );
   }
 }
 
@@ -747,7 +1020,11 @@ exit 0
       print('  ⚠️ No se pudo escribir en `.git/hooks/pre-push`: $e');
     }
 
-    final result = await Process.run('git', ['config', 'core.hooksPath', '.githooks'], runInShell: true);
+    final result = await Process.run('git', [
+      'config',
+      'core.hooksPath',
+      '.githooks',
+    ], runInShell: true);
     if (result.exitCode == 0) {
       print('  ✓ Git `core.hooksPath` configurado a `.githooks`.');
     }
@@ -757,14 +1034,20 @@ exit 0
 }
 
 Future<void> _prepareDeploy(String targetBranch) async {
-  print('🚀 [PREPARAR DESPLIEGUE] Verificando sanidad del proyecto antes de desplegar a "$targetBranch"...');
-  
+  print(
+    '🚀 [PREPARAR DESPLIEGUE] Verificando sanidad del proyecto antes de desplegar a "$targetBranch"...',
+  );
+
   print('  ⏳ Ejecutando análisis estático (flutter analyze)...');
-  final analyzeRes = await Process.run('flutter', ['analyze'], runInShell: true);
+  final analyzeRes = await Process.run('flutter', [
+    'analyze',
+  ], runInShell: true);
   if (analyzeRes.exitCode != 0) {
     print(analyzeRes.stdout);
     print(analyzeRes.stderr);
-    throw Exception('No se puede desplegar: `flutter analyze` reportó advertencias o errores.');
+    throw Exception(
+      'No se puede desplegar: `flutter analyze` reportó advertencias o errores.',
+    );
   }
 
   print('  ⏳ Ejecutando suite de pruebas (flutter test)...');
@@ -777,14 +1060,22 @@ Future<void> _prepareDeploy(String targetBranch) async {
 
   print('\n✅ [LISTO PARA DESPLIEGUE] Código validado.');
   print('📌 Pasos recomendados para despliegue a "$targetBranch":');
-  print('   1. Guarde y cree un commit con sus cambios en su rama de desarrollo actual.');
-  print('   2. Asegúrese de no rastrear .harness_state.json ni artefactos locales.');
-  print('   3. Cambie a la rama objetivo o realice merge limpio a "$targetBranch".');
+  print(
+    '   1. Guarde y cree un commit con sus cambios en su rama de desarrollo actual.',
+  );
+  print(
+    '   2. Asegúrese de no rastrear .harness_state.json ni artefactos locales.',
+  );
+  print(
+    '   3. Cambie a la rama objetivo o realice merge limpio a "$targetBranch".',
+  );
   print('   4. Ejecute git push origin $targetBranch.');
 }
 
 Future<void> _startWatchMode() async {
-  print('👀 [WATCH MODE] Escuchando cambios en los directorios `lib/` y `test/`...');
+  print(
+    '👀 [WATCH MODE] Escuchando cambios en los directorios `lib/` y `test/`...',
+  );
   print('💡 Presione Ctrl + C para salir del modo de observación.\n');
 
   bool isRunning = false;
@@ -792,13 +1083,17 @@ Future<void> _startWatchMode() async {
   Future<void> runWatcherTests() async {
     if (isRunning) return;
     isRunning = true;
-    print('\n🔄 [WATCH MODE] Cambio detectado. Re-ejecutando tests de Flutter...');
+    print(
+      '\n🔄 [WATCH MODE] Cambio detectado. Re-ejecutando tests de Flutter...',
+    );
     final stopwatch = Stopwatch()..start();
     final result = await Process.run('flutter', ['test'], runInShell: true);
     stopwatch.stop();
 
     if (result.exitCode == 0) {
-      print('✅ [WATCH MODE] Todas las pruebas pasaron exitosamente en ${stopwatch.elapsedMilliseconds}ms.');
+      print(
+        '✅ [WATCH MODE] Todas las pruebas pasaron exitosamente en ${stopwatch.elapsedMilliseconds}ms.',
+      );
     } else {
       print('❌ [WATCH MODE] Pruebas fallaron:');
       print(result.stdout);
@@ -885,8 +1180,9 @@ Fases disponibles (en orden secuencial):
   4. desarrollo-green  : Verifica que todos los tests pasen exitosamente (GREEN)
   5. clean-code        : Linter (flutter analyze) y formateo de código
   6. refactor          : Re-evalúa tests para garantizar ausencia de regresiones
-  7. verificacion      : Chequeo global del proyecto (flutter analyze + flutter test)
-  8. optimizacion      : Mide tiempos de ejecución de tests y reporta métricas
+  7. pruebas-mutacion  : Ejecuta pruebas de mutación (Mutation Testing) para verificar la robustez de los tests
+  8. verificacion      : Chequeo global del proyecto (flutter analyze + flutter test)
+  9. optimizacion      : Mide tiempos de ejecución de tests y reporta métricas
 
 Comandos adicionales:
   dart run tool/harness.dart --watch (-w)      : Ejecuta los tests en modo observador (watch mode continuo)
