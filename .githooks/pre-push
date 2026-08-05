@@ -1,0 +1,37 @@
+#!/bin/sh
+# Git Pre-Push Hook: Evita el despliegue del arnés de desarrollo a ramas protegidas (QA, Pre-producción, Producción)
+
+protected_branches="qa release/qa preprod pre-produccion preproduccion staging prod produccion main master"
+
+while read local_ref local_sha remote_ref remote_sha
+do
+  remote_branch=$(echo "$remote_ref" | sed 's#refs/heads/##')
+  
+  for protected in $protected_branches; do
+    if [ "$remote_branch" = "$protected" ]; then
+      echo "🛡️ [GIT PRE-PUSH HOOK] Detectado push hacia la rama de despliegue: '$remote_branch'"
+      
+      tracked_state=$(git ls-files .harness_state.json 2>/dev/null)
+      tracked_specs=$(git ls-files specs 2>/dev/null)
+
+      if [ -n "$tracked_state" ] || [ -n "$tracked_specs" ]; then
+        echo "❌ [ERROR DESPLIEGUE] Se detectaron artefactos del arnés rastreados en Git:"
+        [ -n "$tracked_state" ] && echo "  - .harness_state.json"
+        [ -n "$tracked_specs" ] && echo "  - carpeta specs/"
+        echo ""
+        echo "💡 Motivo: El arnés de desarrollo solo pertenece a entornos de desarrollo (ej. dev, feature/*)."
+        echo "   No se permite llevar artefactos del arnés a $remote_branch."
+        exit 1
+      fi
+      
+      if [ -f "tool/harness.dart" ]; then
+        dart run tool/harness.dart --check-push "$remote_branch"
+        if [ $? -ne 0 ]; then
+          exit 1
+        fi
+      fi
+    fi
+  done
+done
+
+exit 0
