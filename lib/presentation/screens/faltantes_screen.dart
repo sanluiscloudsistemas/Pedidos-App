@@ -32,66 +32,7 @@ class FaltantesScreen extends StatefulWidget {
 class _FaltantesScreenState extends State<FaltantesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  final List<FaltanteItemModel> _faltantesOriginales = const [
-
-    /*
-    FaltanteItemModel(
-      codigo: '294',
-      productoDescripcion: 'ARPAN - REBOZADORES - ARPAN - REBOZADOR DE ARROZ CLASICO ARPAN X 500 GR. - ,5 Kilos',
-      observacion: '',
-      fecha: 'Hace 3 meses',
-    ),
-    FaltanteItemModel(
-      codigo: '297',
-      productoDescripcion: 'ARPAN - REBOZADORES - ARPAN - REBOZADOR DE ARROZ DORADO ARPAN X 500 GR. - 5 Kilos',
-      observacion: '',
-      fecha: 'Hace 5 semanas',
-    ),
-    FaltanteItemModel(
-      codigo: '296',
-      productoDescripcion: 'ARPAN - REBOZADORES - ARPAN - REBOZADOR DE ARROZ PROVENZAL ARPAN X 500 GR. - ,5 Kilos',
-      observacion: '',
-      fecha: 'Hace 5 semanas',
-    ),
-    FaltanteItemModel(
-      codigo: '295',
-      productoDescripcion: 'ARPAN - REBOZADORES - ARPAN - REBOZADOR DE ARROZ SEMILLAS ARPAN X 500 GR. - ,5 Kilos',
-      observacion: '',
-      fecha: 'Hace 3 meses',
-    ),
-    FaltanteItemModel(
-      codigo: '299',
-      productoDescripcion: 'ARPAN - TALITAS - ARPAN - TALITAS DE ARROZ CLASICAS ARPAN X 90 GR. - ,9 Kilos',
-      observacion: '',
-      fecha: 'Hace 3 meses',
-    ),
-    FaltanteItemModel(
-      codigo: '298',
-      productoDescripcion: 'ARPAN - TALITAS - ARPAN - TALITAS DE ARROZ SABOR FRUTOS DEL BOSQUE ARPAN X 90 GR. - ,9 Kilos',
-      observacion: '',
-      fecha: 'Hace 3 meses',
-    ),
-    FaltanteItemModel(
-      codigo: '190',
-      productoDescripcion: 'ARROZ - ARROZ TIO CARLOS - TIO CARLOS - ARROZ TIO CARLOS INTEGRAL X 1 KG. - 1 Kilos',
-      observacion: '',
-      fecha: 'Hace 4 semanas',
-    ),
-    FaltanteItemModel(
-      codigo: '957',
-      productoDescripcion: 'CELUSAL - SAL - CELUSAL - SAL ENTREFINA ESTUCHE X 1 KG. - 1 Kilos',
-      observacion: '',
-      fecha: 'Hace 3 meses',
-    ),
-    FaltanteItemModel(
-      codigo: '970',
-      productoDescripcion: 'CELUSAL - SALEROS - CELUSAL - SALERO SAL ENTREFINA X 1 KG. - 1 Kilos',
-      observacion: '',
-      fecha: 'Hace 3 meses',
-    ),
-
-    */
-  ];
+  final List<FaltanteItemModel> _faltantesOriginales = [];
 
   @override
   void dispose() {

@@ -42,50 +42,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   final Set<String> _selectedCategorias = {};
   bool _mostrarTodo = false;
 
-  final List<ProductoCatalogoModel> _productosOriginales = const [
-    ProductoCatalogoModel(
-      codigo: '651',
-      descripcion: 'FIDEOS SECOS - DON EMILIO - TALLARIN MEDIANO SEM. DON EMILIO X 500 GR. - ,5 Kilos',
-      precioUnitario: 2100.00,
-      categoria: 'PASTAS',
-    ),
-    ProductoCatalogoModel(
-      codigo: '.679',
-      descripcion: 'FIDEOS SECOS - DON EMILIO - BONIF. FIDEOS ENTREFINO X 500 GR. - ,5 Kilos',
-      precioUnitario: 0.00,
-      categoria: 'PASTAS',
-    ),
-    ProductoCatalogoModel(
-      codigo: '.654',
-      descripcion: 'FIDEOS SECOS - DON EMILIO - BONIF. FIDEOS MOÑITO DON EMILIO X 500 GR. - ,5 Kilos',
-      precioUnitario: 0.00,
-      categoria: 'PASTAS',
-    ),
-    ProductoCatalogoModel(
-      codigo: '1020',
-      descripcion: 'PANIFICADO - PAN LACTAL FAMILIAR DON EMILIO X 600 GR.',
-      precioUnitario: 1450.00,
-      categoria: 'PANIFICACION',
-    ),
-    ProductoCatalogoModel(
-      codigo: '3045',
-      descripcion: 'VINO FECOVITA MALBEC RESERVA 750 ML',
-      precioUnitario: 3200.00,
-      categoria: 'FECOVITA',
-    ),
-    ProductoCatalogoModel(
-      codigo: '4089',
-      descripcion: 'LIMPIADOR MULTIUSO DOMITEC 500 ML',
-      precioUnitario: 980.00,
-      categoria: 'DOMITEC',
-    ),
-    ProductoCatalogoModel(
-      codigo: '5012',
-      descripcion: 'TOMATE TRITURADO VANOLI 520 GR.',
-      precioUnitario: 1150.00,
-      categoria: 'VANOLI',
-    ),
-  ];
+  final List<ProductoCatalogoModel> _productosOriginales = [];
 
   final Map<String, int> _categoriaCounts = const {
     'PASTAS': 147,

@@ -14,22 +14,26 @@ class SyncRepositoryImpl implements SyncRepository {
 
   @override
   Future<int> saveOrderOffline({
-    required String cliente,
+    required int organizacionId,
+    required int clienteId,
+    required int vendedorId,
+    required int repartoId,
     required String condicionVenta,
-    required String reparto,
-    required double totalMonto,
-    required String fechaGeneracion,
+    required double total,
+    required String fecha,
     required List<Map<String, dynamic>> items,
   }) async {
     return db.transaction(() async {
       // 1. Insertar en PedidosLocal
       final pedidoId = await db.into(db.pedidosLocal).insert(
             PedidosLocalCompanion.insert(
-              cliente: cliente,
+              organizacionId: organizacionId,
+              clienteId: clienteId,
+              vendedorId: vendedorId,
+              repartoId: repartoId,
               condicionVenta: Value(condicionVenta),
-              reparto: Value(reparto),
-              totalMonto: totalMonto,
-              fechaGeneracion: fechaGeneracion,
+              total: total,
+              fecha: fecha,
               syncStatus: const Value('PENDING_SYNC'),
             ),
           );
@@ -39,18 +43,67 @@ class SyncRepositoryImpl implements SyncRepository {
         await db.into(db.orderItemsLocal).insert(
               OrderItemsLocalCompanion.insert(
                 pedidoLocalId: pedidoId,
-                codigo: item['codigo'] as String? ?? '000',
-                descripcion: item['descripcion'] as String? ?? 'Producto General',
+                productoId: (item['productoId'] as num?)?.toInt() ?? 0,
                 cantidad: (item['cantidad'] as num?)?.toInt() ?? 1,
                 precioUnitario: (item['precioUnitario'] as num?)?.toDouble() ?? 0.0,
                 descuento: Value((item['descuento'] as num?)?.toDouble() ?? 0.0),
-                total: (item['total'] as num?)?.toDouble() ?? 0.0,
+                precioTotal: (item['precioTotal'] as num?)?.toDouble() ?? 0.0,
               ),
             );
       }
 
       return pedidoId;
     });
+  }
+
+  @override
+  Future<int> saveClienteOffline({
+    required int organizacionId,
+    required int vendedorId,
+    required String nombre,
+    required String razonSocial,
+    required String tipoDocumento,
+    required String numeroDocumento,
+    required String tipoIva,
+    String? telefono,
+    String? emailPrincipal,
+    String? geoposicion,
+  }) async {
+    return await db.into(db.clientesLocal).insert(
+      ClientesLocalCompanion.insert(
+        organizacionId: organizacionId,
+        vendedorId: vendedorId,
+        nombre: nombre,
+        razonSocial: razonSocial,
+        tipoDocumento: tipoDocumento,
+        numeroDocumento: numeroDocumento,
+        tipoIva: tipoIva,
+        telefono: Value(telefono),
+        emailPrincipal: Value(emailPrincipal),
+        geoposicion: Value(geoposicion),
+        syncStatus: const Value('PENDING_SYNC'),
+      ),
+    );
+  }
+
+  @override
+  Future<int> saveFaltanteOffline({
+    required int organizacionId,
+    required int vendedorId,
+    required int productoId,
+    required String fecha,
+    String? observacion,
+  }) async {
+    return await db.into(db.faltantesLocal).insert(
+      FaltantesLocalCompanion.insert(
+        organizacionId: organizacionId,
+        vendedorId: vendedorId,
+        productoId: productoId,
+        fecha: fecha,
+        observacion: Value(observacion),
+        syncStatus: const Value('PENDING_SYNC'),
+      ),
+    );
   }
 
   @override
@@ -101,36 +154,33 @@ class SyncRepositoryImpl implements SyncRepository {
 
   @override
   Future<int> syncPendingOrders() async {
-    final pendingList = await getPendingSyncOrders();
-    if (pendingList.isEmpty) return 0;
-
     int syncedCount = 0;
 
-    for (final fullOrder in pendingList) {
+    // 1. Sincronizar Pedidos
+    final pendingOrdersList = await getPendingSyncOrders();
+    for (final fullOrder in pendingOrdersList) {
       try {
         final payload = {
-          'id_local': fullOrder.order.id,
-          'cliente': fullOrder.order.cliente,
-          'condicion_venta': fullOrder.order.condicionVenta,
-          'reparto': fullOrder.order.reparto,
-          'total_monto': fullOrder.order.totalMonto,
-          'fecha_generacion': fullOrder.order.fechaGeneracion,
-          'items': fullOrder.items
-              .map((it) => {
-                    'codigo': it.codigo,
-                    'descripcion': it.descripcion,
-                    'cantidad': it.cantidad,
-                    'precio_unitario': it.precioUnitario,
-                    'descuento': it.descuento,
-                    'total': it.total,
-                  })
-              .toList(),
+          'pedido': {
+            'organizacion_id': fullOrder.order.organizacionId,
+            'cliente_id': fullOrder.order.clienteId,
+            'vendedor_id': fullOrder.order.vendedorId,
+            'reparto_id': fullOrder.order.repartoId,
+            'fecha': fullOrder.order.fecha,
+            'condicionventa': fullOrder.order.condicionVenta,
+            'total': fullOrder.order.total,
+          },
+          'items': fullOrder.items.map((it) => {
+            'producto_id': it.productoId,
+            'cantidad': it.cantidad,
+            'precio_unitario': it.precioUnitario,
+            'descuento': it.descuento,
+            'precio_total': it.precioTotal,
+          }).toList(),
         };
 
-        // Simular o enviar HTTP POST a la API remota vía ApiService
-        await apiService.post('/pedidos/sincronizar', data: payload);
+        await apiService.postPedido(payload);
 
-        // Marcar como SYNCED en Drift SQLite
         await (db.update(db.pedidosLocal)
               ..where((tbl) => tbl.id.equals(fullOrder.order.id)))
             .write(
@@ -139,14 +189,93 @@ class SyncRepositoryImpl implements SyncRepository {
             syncErrorMessage: Value(null),
           ),
         );
-
         syncedCount++;
       } catch (e) {
-        // En caso de falla o error puntual en la API, registrar el mensaje en la BD
         await (db.update(db.pedidosLocal)
               ..where((tbl) => tbl.id.equals(fullOrder.order.id)))
             .write(
           PedidosLocalCompanion(
+            syncStatus: const Value('SYNC_ERROR'),
+            syncErrorMessage: Value(e.toString()),
+          ),
+        );
+      }
+    }
+
+    // 2. Sincronizar Clientes
+    final pendingClientes = await (db.select(db.clientesLocal)
+          ..where((tbl) => tbl.syncStatus.equals('PENDING_SYNC')))
+        .get();
+
+    for (final cliente in pendingClientes) {
+      try {
+        final payload = {
+          'organizacion_id': cliente.organizacionId,
+          'vendedor_id': cliente.vendedorId,
+          'nombre': cliente.nombre,
+          'razon_social': cliente.razonSocial,
+          'tipo_documento': cliente.tipoDocumento,
+          'numero_documento': cliente.numeroDocumento,
+          'tipo_iva': cliente.tipoIva,
+          'telefono': cliente.telefono ?? '',
+          'email_principal': cliente.emailPrincipal ?? '',
+          'geoposicion': cliente.geoposicion ?? '',
+        };
+
+        await apiService.postCliente(payload);
+
+        await (db.update(db.clientesLocal)
+              ..where((tbl) => tbl.id.equals(cliente.id)))
+            .write(
+          const ClientesLocalCompanion(
+            syncStatus: Value('SYNCED'),
+            syncErrorMessage: Value(null),
+          ),
+        );
+        syncedCount++;
+      } catch (e) {
+        await (db.update(db.clientesLocal)
+              ..where((tbl) => tbl.id.equals(cliente.id)))
+            .write(
+          ClientesLocalCompanion(
+            syncStatus: const Value('SYNC_ERROR'),
+            syncErrorMessage: Value(e.toString()),
+          ),
+        );
+      }
+    }
+
+    // 3. Sincronizar Faltantes
+    final pendingFaltantes = await (db.select(db.faltantesLocal)
+          ..where((tbl) => tbl.syncStatus.equals('PENDING_SYNC')))
+        .get();
+
+    for (final faltante in pendingFaltantes) {
+      try {
+        final payload = {
+          'organizacion_id': faltante.organizacionId,
+          'vendedor_id': faltante.vendedorId,
+          'producto_id': faltante.productoId,
+          'fecha': faltante.fecha,
+          'observacion': faltante.observacion ?? '',
+        };
+
+        await apiService.postFaltante(payload);
+
+        await (db.update(db.faltantesLocal)
+              ..where((tbl) => tbl.id.equals(faltante.id)))
+            .write(
+          const FaltantesLocalCompanion(
+            syncStatus: Value('SYNCED'),
+            syncErrorMessage: Value(null),
+          ),
+        );
+        syncedCount++;
+      } catch (e) {
+        await (db.update(db.faltantesLocal)
+              ..where((tbl) => tbl.id.equals(faltante.id)))
+            .write(
+          FaltantesLocalCompanion(
             syncStatus: const Value('SYNC_ERROR'),
             syncErrorMessage: Value(e.toString()),
           ),

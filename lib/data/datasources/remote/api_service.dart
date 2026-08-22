@@ -15,6 +15,8 @@ class ApiService {
   void setAuthToken(String? token) {
     if (token != null && token.isNotEmpty) {
       _dio.options.headers['Authorization'] = 'Bearer $token';
+      // DEPUB: Mostrar el token puro en pantalla para que el usuario pueda visualizarlo
+      throw Exception('TOKEN QUE SE ENVÍA EN LAS PETICIONES (Cabecera Authorization):\n\nBearer-> $token');
     } else {
       _dio.options.headers.remove('Authorization');
     }
@@ -75,11 +77,36 @@ class ApiService {
     }
   }
 
-  Future<Response> post(String path, {dynamic data}) async {
+  Future<Response> postPedido(Map<String, dynamic> payload) async {
     try {
-      return await _dio.post(path, data: data);
+      return await _dio.post(
+        '/mobile/pedidos',
+        data: payload,
+      );
     } on DioException catch (e) {
-      throw Exception('Error en petición POST a $path: ${e.message}');
+      throw Exception('Error al enviar pedido: ${e.message}');
+    }
+  }
+
+  Future<Response> postCliente(Map<String, dynamic> payload) async {
+    try {
+      return await _dio.post(
+        '/mobile/clientes',
+        data: payload,
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al enviar cliente: ${e.message}');
+    }
+  }
+
+  Future<Response> postFaltante(Map<String, dynamic> payload) async {
+    try {
+      return await _dio.post(
+        '/mobile/faltantes',
+        data: payload,
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al enviar faltante: ${e.message}');
     }
   }
 }

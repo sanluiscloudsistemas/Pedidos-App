@@ -40,64 +40,7 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
   bool _filterAbierto = true;
   bool _filterEnCarga = false;
 
-  final List<RepartoModel> _repartosOriginales = const [
-    RepartoModel(
-      fecha: '30/07/2026 00:00:00',
-      codigo: '95521',
-      nombre: 'FER II 31-07-26',
-      descripcion: 'FER II 31-07-26',
-      zona: 'FER (LUNES - JUEVES) B° PUERTAS DEL SOL Y EVA PERON',
-      estado: 'ABIERTO',
-    ),
-    RepartoModel(
-      fecha: '30/07/2026 00:00:00',
-      codigo: '95522',
-      nombre: 'SAMUEL 31-07-26',
-      descripcion: 'SAMUEL 31-07-26',
-      zona: 'SAMUEL (LUNES - JUEVES) NORTE SL',
-      estado: 'ABIERTO',
-    ),
-    RepartoModel(
-      fecha: '30/07/2026 00:00:00',
-      codigo: '95523',
-      nombre: 'ALEXIS 31-07-26',
-      descripcion: 'ALEXIS 31-07-26',
-      zona: 'ALEXIS (LUNES - JUEVES) B° CGT Y ALREDEDORES',
-      estado: 'ABIERTO',
-    ),
-    RepartoModel(
-      fecha: '30/07/2026 00:00:00',
-      codigo: '95501',
-      nombre: 'FERNANDO 31-07-26',
-      descripcion: 'DSFSFS',
-      zona: 'FER (LUNES - JUEVES) B° PUERTAS DEL SOL Y EVA PERON',
-      estado: 'ABIERTO',
-    ),
-    RepartoModel(
-      fecha: '30/07/2026 00:00:00',
-      codigo: '95525',
-      nombre: 'SIN DEPOSITO',
-      descripcion: 'SIN DEPOSITO',
-      zona: 'DEPOSITO',
-      estado: 'ABIERTO',
-    ),
-    RepartoModel(
-      fecha: '29/07/2026 00:00:00',
-      codigo: '95480',
-      nombre: 'REPARTO ANTERIOR',
-      descripcion: 'REPARTO FINALIZADO',
-      zona: 'CENTRO SL',
-      estado: 'FINALIZADO',
-    ),
-    RepartoModel(
-      fecha: '31/07/2026 00:00:00',
-      codigo: '95530',
-      nombre: 'REPARTO NOCTURNO',
-      descripcion: 'EN PREPARACION',
-      zona: 'SUR SL',
-      estado: 'EN CARGA',
-    ),
-  ];
+  final List<RepartoModel> _repartosOriginales = [];
 
   @override
   void dispose() {

@@ -46,21 +46,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   late String _selectedCliente;
   String _selectedCondicionVenta = 'CONTADO';
  
-  final List<String> _clientesDisponibles = const [
-  
-
-    // Sólo el nombre del Cliente
-    'ABIBE JULIO',
-    '1335 DISTRIBUIDORA MAG SRL',
-    /*
-    'CALDERON ELIANA',
-    'DOMINGUEZ CARLOS MATIAS',
-    'PIÑEYRO IRMA BRANKA',
-    'BARROSO VILMA',
-    'SUP. CHINO - DAI BIHUI',
-    */
-
-  ];
+  final List<String> _clientesDisponibles = [];
 
   final List<String> _condicionesVenta = const [
     'CONTADO',
@@ -75,33 +61,18 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   final TextEditingController _descuentoController = TextEditingController();
 
   // Paso 3 State
-  String _selectedReparto = 'FER II 31-07-26';
+  String? _selectedReparto;
 
-  final List<String> _repartosDisponibles = const [
-    
-    'FER II 31-07-26',
-    'SAMUEL 31-07-26',
-    /*
-    'ALEXIS 31-07-26',
-    'FERNANDO 31-07-26',
-    'SIN DEPOSITO 30-07-26',
-    'LUIS DEPOSITO 30-07-26',
-    'LUCAS 31-07-26',
-    */
-  ];
+  final List<String> _repartosDisponibles = [];
 
   @override
   void initState() {
     super.initState();
-    _selectedCliente = widget.clienteInicial ?? _clientesDisponibles.first;
-    _items.add(
-      const OrderItemDraft(
-        codigo: '651',
-        descripcion: '651 - TALLARIN MEDIANO SEM. DON EMILIO 500 GR DON EMILIO',
-        cantidad: 5,
-        precioUnitario: 2100.00,
-      ),
-    );
+    _selectedCliente = widget.clienteInicial ?? (_clientesDisponibles.isNotEmpty ? _clientesDisponibles.first : '');
+    _selectedReparto = _repartosDisponibles.isNotEmpty ? _repartosDisponibles.first : null;
+    
+    // Dejamos la lista de items inicial vacía (removiendo el producto hardcodeado)
+    // _items.add(...)
   }
 
   @override
@@ -143,24 +114,25 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
 
   void _confirmarPedido(BuildContext context) async {
     final syncNotifier = Provider.of<SyncNotifier>(context, listen: false);
-
+    
     final mappedItems = _items
         .map((it) => {
-              'codigo': it.codigo,
-              'descripcion': it.descripcion,
+              'productoId': int.tryParse(it.codigo) ?? 0,
               'cantidad': it.cantidad,
               'precioUnitario': it.precioUnitario,
               'descuento': it.descuento,
-              'total': it.total,
+              'precioTotal': it.total,
             })
         .toList();
 
     await syncNotifier.saveOrderOffline(
-      cliente: _selectedCliente,
+      organizacionId: 14, // TODO: Tomar de AuthNotifier cuando esté disponible como entero
+      clienteId: 0,       // TODO: Obtener el ID del cliente seleccionado
+      vendedorId: 23,     // TODO: Obtener el ID del vendedor
+      repartoId: 0,       // TODO: Obtener el ID del reparto
       condicionVenta: _selectedCondicionVenta,
-      reparto: _selectedReparto,
-      totalMonto: _totalMonto,
-      fechaGeneracion: '30/07/2026',
+      total: _totalMonto,
+      fecha: DateTime.now().toIso8601String().split('T').first,
       items: mappedItems,
     );
 
@@ -253,9 +225,11 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
         const SizedBox(height: 24),
         _buildDropdownBox(
           label: 'Cliente',
-          value: _selectedCliente,
+          value: _clientesDisponibles.isEmpty ? null : _selectedCliente,
           items: _clientesDisponibles,
-          onChanged: (val) => setState(() => _selectedCliente = val!),
+          onChanged: (val) {
+            if (val != null) setState(() => _selectedCliente = val);
+          },
         ),
         const SizedBox(height: 16),
         _buildDropdownBox(
@@ -531,9 +505,11 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
         const SizedBox(height: 12),
         _buildDropdownBox(
           label: 'Reparto',
-          value: _selectedReparto,
+          value: _repartosDisponibles.isEmpty ? null : _selectedReparto,
           items: _repartosDisponibles,
-          onChanged: (val) => setState(() => _selectedReparto = val!),
+          onChanged: (val) {
+             if (val != null) setState(() => _selectedReparto = val);
+          },
         ),
       ],
     );
@@ -541,7 +517,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
 
   Widget _buildDropdownBox({
     required String label,
-    required String value,
+    required String? value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
@@ -557,13 +533,15 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF757575))),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: value,
+              value: items.isEmpty ? null : value,
               isExpanded: true,
               style: const TextStyle(fontSize: 14, color: Color(0xFF212121), fontWeight: FontWeight.w500),
-              items: items.map((it) {
-                return DropdownMenuItem(value: it, child: Text(it));
-              }).toList(),
-              onChanged: onChanged,
+              items: items.isEmpty 
+                  ? [const DropdownMenuItem<String>(value: null, child: Text('No hay datos'))]
+                  : items.map((it) {
+                      return DropdownMenuItem(value: it, child: Text(it));
+                    }).toList(),
+              onChanged: items.isEmpty ? null : onChanged,
             ),
           ),
         ],

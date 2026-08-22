@@ -39,77 +39,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedAccion = 'Acciones';
 
-  final List<ClienteModel> _clientesOriginales = const [
-    
-    //Solo nombre
-    ClienteModel(
-      codigo: '2068',
-      nombre: 'ABIBE JULIO',
-      documento: 'CUIL : 2068',
-      tipoIva: 'CONSUMIDOR FINAL',
-    ),
-
-     ClienteModel(
-      codigo: '513009',
-      nombre: '1335 DISTRIBUIDORA MAG SRL',
-      documento: 'CUIL : 513009',
-      tipoIva: 'CONSUMIDOR FINAL',
-    ),
-
-    /*
-
-    ClienteModel(
-      codigo: '1051',
-      nombre: 'CALDERON ELIANA',
-      documento: 'CUIL : 1051',
-      tipoIva: 'CONSUMIDOR FINAL',
-    ),
-    ClienteModel(
-      codigo: '0193',
-      nombre: 'DOMINGUEZ CARLOS MATIAS',
-      documento: 'CUIT : 23334283119',
-      tipoIva: 'RESP. INSCRIPTO',
-    ),
-    ClienteModel(
-      codigo: '0016',
-      nombre: 'PIÑEYRO IRMA BRANKA',
-      documento: 'CUIT : 27059203792',
-      tipoIva: 'RESP. INSCRIPTO',
-    ),
-    ClienteModel(
-      codigo: '1480',
-      nombre: 'BARROSO VILMA',
-      documento: 'CUIT : 27201371762',
-      tipoIva: 'MONOTRIBUTO',
-    ),
-    ClienteModel(
-      codigo: '1114',
-      nombre: 'SUP. CHINO - DAI BIHUI',
-      documento: 'CUIT : 20957975896',
-      tipoIva: 'RESP. INSCRIPTO',
-    ),
-    ClienteModel(
-      codigo: '1198',
-      nombre: 'CAMINOS ARACELI',
-      documento: 'CUIL : 1198',
-      tipoIva: 'CONSUMIDOR FINAL',
-    ),
-    ClienteModel(
-      codigo: '0695',
-      nombre: 'CABRERA ANALIA',
-      documento: 'CUIT : 27322538680',
-      tipoIva: 'RESP. INSCRIPTO',
-    ),
-    ClienteModel(
-      codigo: '1119',
-      nombre: 'FERNANDEZ JUAN CARLOS',
-      documento: 'CUIT : 20319009249',
-      tipoIva: 'MONOTRIBUTO',
-    ),
-
-    */
-
-  ];
+  final List<ClienteModel> _clientesOriginales = [];
   
 
   @override

@@ -48,70 +48,7 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   bool _filterPendiente = false;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<PedidoItemModel> _pedidosOriginales = const [
-    //cliente: Nombre del Cliente + (Forma de Pago) + (Código correspondiente)
-
-    /*  
-    PedidoItemModel(
-      fechaGeneracion: '29/07/2026',
-      codigo: '513003',
-      cliente: '0720 BERARDI OLIVA CYNTHIA BELEN (FA)',
-      monto: 30550.00,
-      estado: 'FINALIZADO',
-    ),
-    PedidoItemModel(
-      fechaGeneracion: '29/07/2026',
-      codigo: '513004',
-      cliente: '0306 AGUERO CECILIA (FA)',
-      monto: 41000.00,
-      estado: 'FINALIZADO',
-    ),
-    PedidoItemModel(
-      fechaGeneracion: '29/07/2026',
-      codigo: '513005',
-      cliente: '3699 MIRANDA ROMINA SOLEDAD (CF)',
-      monto: 30640.00,
-      estado: 'FINALIZADO',
-    ),
-    PedidoItemModel(
-      fechaGeneracion: '29/07/2026',
-      codigo: '513007',
-      cliente: '0400 DISTRIBUIDORA MAG SRL CAIDOS (FA)',
-      monto: 220500.00,
-      estado: 'FINALIZADO',
-    ),
-    PedidoItemModel(
-      fechaGeneracion: '29/07/2026',
-      codigo: '513008',
-      cliente: '1335 DISTRIBUIDORA MAG SRL SARMIENTO (FA)',
-      monto: 393000.00,
-      estado: 'FINALIZADO',
-    ),
-    */
-    PedidoItemModel(
-      fechaGeneracion: '29/07/2026',
-      codigo: '513009',
-      cliente: '1335 DISTRIBUIDORA MAG SRL (513009)',
-      monto: 67200.00,
-      estado: 'FINALIZADO',
-    ),
-    PedidoItemModel(
-      fechaGeneracion: '30/07/2026',
-      codigo: '513010',
-      cliente: '0720 BERARDI OLIVA CYNTHIA BELEN (513010)',
-      monto: 15800.00,
-      estado: 'NUEVO',
-    ),
-    PedidoItemModel(
-      fechaGeneracion: '30/07/2026',
-      codigo: '513011',
-      cliente: '0306 AGUERO CECILIA (513011)',
-      monto: 28400.00,
-      estado: 'PENDIENTE',
-    ),
-    
-
-  ];
+  final List<PedidoItemModel> _pedidosOriginales = [];
 
   @override
   void initState() {
@@ -133,10 +70,10 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
           ? 'PENDIENTE SYNC'
           : (full.order.syncStatus == 'SYNC_ERROR' ? 'ERROR SYNC' : 'FINALIZADO');
       return PedidoItemModel(
-        fechaGeneracion: full.order.fechaGeneracion,
+        fechaGeneracion: full.order.fecha,
         codigo: 'LOC-${full.order.id}',
-        cliente: full.order.cliente,
-        monto: full.order.totalMonto,
+        cliente: 'Cliente ID: ${full.order.clienteId}',
+        monto: full.order.total,
         estado: statusLabel,
       );
     }).toList();

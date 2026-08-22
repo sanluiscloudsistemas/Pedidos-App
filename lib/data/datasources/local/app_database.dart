@@ -15,18 +15,16 @@ class Productos extends Table {
 /// Tabla para guardar los pedidos generados localmente (modo offline / online)
 class PedidosLocal extends Table {
   IntColumn get id => integer().autoIncrement()();
+  
+  IntColumn get organizacionId => integer()();
+  IntColumn get clienteId => integer()();
+  IntColumn get vendedorId => integer()();
+  IntColumn get repartoId => integer()();
 
-  //IntColumn get pedido_id => integer().withDefault(const Constant(0))();  
-  //IntColumn get organizacion_id => integer().withDefault(const Constant(0))();  
-  //IntColumn get vendedor_id => integer().withDefault(const Constant(0))();   
-  //IntColumn get cliente_id => integer().withDefault(const Constant(0))();
-
-  TextColumn get cliente => text()();
   TextColumn get condicionVenta => text().withDefault(const Constant('CONTADO'))();
-  //IntColumn get reparto_id => integer().withDefault(const Constant(0))();
-  TextColumn get reparto => text().withLength(min: 1, max: 100)();//text().withDefault(const Constant('GENERAL'))();
-  RealColumn get totalMonto => real()();
-  TextColumn get fechaGeneracion => text()();
+  RealColumn get total => real()();
+  TextColumn get fecha => text()();
+  
   // Estado de sincronización: 'PENDING_SYNC', 'SYNCED', 'SYNC_ERROR'
   TextColumn get syncStatus => text().withDefault(const Constant('PENDING_SYNC'))();
   TextColumn get syncErrorMessage => text().nullable()();
@@ -37,20 +35,51 @@ class PedidosLocal extends Table {
 class OrderItemsLocal extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get pedidoLocalId => integer().references(PedidosLocal, #id, onDelete: KeyAction.cascade)();
-  TextColumn get codigo => text()();
-  TextColumn get descripcion => text()();
+  IntColumn get productoId => integer()();
   IntColumn get cantidad => integer()();
   RealColumn get precioUnitario => real()();
   RealColumn get descuento => real().withDefault(const Constant(0.0))();
-  RealColumn get total => real()();
+  RealColumn get precioTotal => real()();
 }
 
-@DriftDatabase(tables: [Productos, PedidosLocal, OrderItemsLocal])
+class ClientesLocal extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get organizacionId => integer()();
+  IntColumn get vendedorId => integer()();
+  TextColumn get nombre => text()();
+  TextColumn get razonSocial => text()();
+  TextColumn get tipoDocumento => text()();
+  TextColumn get numeroDocumento => text()();
+  TextColumn get tipoIva => text()();
+  TextColumn get telefono => text().nullable()();
+  TextColumn get emailPrincipal => text().nullable()();
+  TextColumn get geoposicion => text().nullable()();
+  TextColumn get estado => text().withDefault(const Constant('ACT'))();
+
+  TextColumn get syncStatus => text().withDefault(const Constant('PENDING_SYNC'))();
+  TextColumn get syncErrorMessage => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class FaltantesLocal extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get organizacionId => integer()();
+  IntColumn get vendedorId => integer()();
+  IntColumn get productoId => integer()();
+  TextColumn get fecha => text()();
+  TextColumn get observacion => text().nullable()();
+
+  TextColumn get syncStatus => text().withDefault(const Constant('PENDING_SYNC'))();
+  TextColumn get syncErrorMessage => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [Productos, PedidosLocal, OrderItemsLocal, ClientesLocal, FaltantesLocal])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 }
 
 QueryExecutor _openConnection() {
