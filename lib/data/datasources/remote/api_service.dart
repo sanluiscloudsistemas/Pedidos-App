@@ -15,8 +15,6 @@ class ApiService {
   void setAuthToken(String? token) {
     if (token != null && token.isNotEmpty) {
       _dio.options.headers['Authorization'] = 'Bearer $token';
-      // DEPUB: Mostrar el token puro en pantalla para que el usuario pueda visualizarlo
-      throw Exception('TOKEN QUE SE ENVÍA EN LAS PETICIONES (Cabecera Authorization):\n\nBearer-> $token');
     } else {
       _dio.options.headers.remove('Authorization');
     }
