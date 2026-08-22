@@ -20,7 +20,7 @@ class PreventaAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   const PreventaAppBar({
     super.key,
-    this.title = 'PEDIDOS',
+    this.title = 'P E D I D O S - I A',
     this.showBackButton = false,
     this.isConnected = true,
     this.onBackPressed,
@@ -44,7 +44,7 @@ class PreventaAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   void _showProfileDialog(BuildContext context) {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    final user = authNotifier.authResponse?.session ?? 'Preventista';
+    final user = authNotifier.authResponse?.usuario ?? 'Preventista';
 
     showDialog(
       context: context,

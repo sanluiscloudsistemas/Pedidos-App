@@ -45,14 +45,21 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   // Paso 1 State
   late String _selectedCliente;
   String _selectedCondicionVenta = 'CONTADO';
-
+ 
   final List<String> _clientesDisponibles = const [
-    'ABIBE JULIO (CF) (2068)',
-    'CALDERON ELIANA (CF) (1051)',
-    'DOMINGUEZ CARLOS MATIAS (FA) (0193)',
-    'PIÑEYRO IRMA BRANKA (FA) (0016)',
-    'BARROSO VILMA (FA) (1480)',
-    'SUP. CHINO - DAI BIHUI (FA) (1114)',
+  
+
+    // Sólo el nombre del Cliente
+    'ABIBE JULIO',
+    '1335 DISTRIBUIDORA MAG SRL',
+    /*
+    'CALDERON ELIANA',
+    'DOMINGUEZ CARLOS MATIAS',
+    'PIÑEYRO IRMA BRANKA',
+    'BARROSO VILMA',
+    'SUP. CHINO - DAI BIHUI',
+    */
+
   ];
 
   final List<String> _condicionesVenta = const [
@@ -71,13 +78,16 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   String _selectedReparto = 'FER II 31-07-26';
 
   final List<String> _repartosDisponibles = const [
+    
     'FER II 31-07-26',
     'SAMUEL 31-07-26',
+    /*
     'ALEXIS 31-07-26',
     'FERNANDO 31-07-26',
     'SIN DEPOSITO 30-07-26',
     'LUIS DEPOSITO 30-07-26',
     'LUCAS 31-07-26',
+    */
   ];
 
   @override
@@ -150,7 +160,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       condicionVenta: _selectedCondicionVenta,
       reparto: _selectedReparto,
       totalMonto: _totalMonto,
-      fechaGeneracion: '31/07/2026',
+      fechaGeneracion: '30/07/2026',
       items: mappedItems,
     );
 
@@ -224,7 +234,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F),
+                backgroundColor: const Color(0xFFD32F2F), 
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
@@ -249,7 +259,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
         ),
         const SizedBox(height: 16),
         _buildDropdownBox(
-          label: 'Cliente',
+          label: 'Condición de Venta',
           value: _selectedCondicionVenta,
           items: _condicionesVenta,
           onChanged: (val) => setState(() => _selectedCondicionVenta = val!),

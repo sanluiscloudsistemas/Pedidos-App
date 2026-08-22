@@ -5,6 +5,7 @@ part 'app_database.g.dart';
 
 class Productos extends Table {
   IntColumn get id => integer().autoIncrement()();
+  //TextColumn get codigo => text().withLength(min: 1, max: 30)();
   TextColumn get nombre => text().withLength(min: 1, max: 100)();
   TextColumn get descripcion => text().nullable()();
   RealColumn get precio => real()();
@@ -14,9 +15,16 @@ class Productos extends Table {
 /// Tabla para guardar los pedidos generados localmente (modo offline / online)
 class PedidosLocal extends Table {
   IntColumn get id => integer().autoIncrement()();
+
+  //IntColumn get pedido_id => integer().withDefault(const Constant(0))();  
+  //IntColumn get organizacion_id => integer().withDefault(const Constant(0))();  
+  //IntColumn get vendedor_id => integer().withDefault(const Constant(0))();   
+  //IntColumn get cliente_id => integer().withDefault(const Constant(0))();
+
   TextColumn get cliente => text()();
   TextColumn get condicionVenta => text().withDefault(const Constant('CONTADO'))();
-  TextColumn get reparto => text().withDefault(const Constant('GENERAL'))();
+  //IntColumn get reparto_id => integer().withDefault(const Constant(0))();
+  TextColumn get reparto => text().withLength(min: 1, max: 100)();//text().withDefault(const Constant('GENERAL'))();
   RealColumn get totalMonto => real()();
   TextColumn get fechaGeneracion => text()();
   // Estado de sincronización: 'PENDING_SYNC', 'SYNCED', 'SYNC_ERROR'

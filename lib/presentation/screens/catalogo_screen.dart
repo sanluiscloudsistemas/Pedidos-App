@@ -222,7 +222,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                 children: [
                   ListHeaderSummary(
                     count: productosList.length,
-                    label: 'productos',
+                    label: '   Lista de Productos',
                   ),
                   TextButton.icon(
                     onPressed: _resetFilters,

@@ -39,7 +39,6 @@ class ConnectivityNotifier extends ChangeNotifier {
     // Si no hay ningún resultado o contiene exclusivamente 'none', no hay conexión.
     final hasNoConnection = results.isEmpty ||
         results.contains(ConnectivityResult.none);
-
     _isConnected = !hasNoConnection;
     notifyListeners();
   }

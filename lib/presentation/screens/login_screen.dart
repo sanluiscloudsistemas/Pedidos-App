@@ -5,6 +5,7 @@ import '../../core/theme/app_styles.dart';
 import '../notifiers/auth_notifier.dart';
 import 'home_screen.dart';
 
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -96,7 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           _handleLogin(context);
                         }
                       },
-                      child: const Text('Iniciar Sesión', style: TextStyle(fontSize: 18)),
+                      //child: const Text('Iniciar Sesión', style: TextStyle(fontSize: 18)),
+                      child: const Text('Conectar', style: TextStyle(fontSize: 18)),
                     ),
                   );
                 },
@@ -120,12 +122,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bienvenido: ${authNotifier.authResponse?.session}')),
+          //SnackBar(content: Text('Bienvenido: ${authNotifier.authResponse?.session}'+' - '+ '${authNotifier.authResponse?.usuario}')),
+          SnackBar(content: Text('Bienvenido: ${authNotifier.authResponse?.usuario}')),
+
         );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
+
       }
     } else {
       // ignore: use_build_context_synchronously
@@ -135,6 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.red,
         ),
       );
+      //debugPrint('No conecta');
     }
   }
 }

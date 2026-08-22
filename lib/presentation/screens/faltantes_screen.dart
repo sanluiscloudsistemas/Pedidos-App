@@ -33,6 +33,8 @@ class _FaltantesScreenState extends State<FaltantesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<FaltanteItemModel> _faltantesOriginales = const [
+
+    /*
     FaltanteItemModel(
       codigo: '294',
       productoDescripcion: 'ARPAN - REBOZADORES - ARPAN - REBOZADOR DE ARROZ CLASICO ARPAN X 500 GR. - ,5 Kilos',
@@ -87,6 +89,8 @@ class _FaltantesScreenState extends State<FaltantesScreen> {
       observacion: '',
       fecha: 'Hace 3 meses',
     ),
+
+    */
   ];
 
   @override

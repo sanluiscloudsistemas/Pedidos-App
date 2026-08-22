@@ -20,5 +20,6 @@ Para acceder a estas variables mediante el paquete `flutter_dotenv`:
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Obtención del ID de organización de prueba
-final String sisOrgId = dotenv.env['G_SISORG_ID'] ?? '14';
+final String sisOrgId = dotenv.env['G_SISORG_ID'] ?? '14'; //'10'; //para CENTRO
+
 ```

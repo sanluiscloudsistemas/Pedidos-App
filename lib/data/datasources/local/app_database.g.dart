@@ -5,10 +5,12 @@ part of 'app_database.dart';
 // ignore_for_file: type=lint
 class $ProductosTable extends Productos
     with TableInfo<$ProductosTable, Producto> {
+      
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $ProductosTable(this.attachedDatabase, [this._alias]);
+
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -22,6 +24,7 @@ class $ProductosTable extends Productos
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+
   static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
   @override
   late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
@@ -35,6 +38,7 @@ class $ProductosTable extends Productos
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+
   static const VerificationMeta _descripcionMeta = const VerificationMeta(
     'descripcion',
   );
@@ -46,6 +50,7 @@ class $ProductosTable extends Productos
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+
   static const VerificationMeta _precioMeta = const VerificationMeta('precio');
   @override
   late final GeneratedColumn<double> precio = GeneratedColumn<double>(
@@ -55,6 +60,7 @@ class $ProductosTable extends Productos
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+
   static const VerificationMeta _stockMeta = const VerificationMeta('stock');
   @override
   late final GeneratedColumn<int> stock = GeneratedColumn<int>(
@@ -65,6 +71,7 @@ class $ProductosTable extends Productos
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -127,7 +134,7 @@ class $ProductosTable extends Productos
   @override
   Producto map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Producto(
+    return Producto( 
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -194,6 +201,8 @@ class Producto extends DataClass implements Insertable<Producto> {
       stock: Value(stock),
     );
   }
+
+  // acá Productos
 
   factory Producto.fromJson(
     Map<String, dynamic> json, {
@@ -667,6 +676,8 @@ class PedidosLocalData extends DataClass
     );
   }
 
+
+  // Acá Pedidos
   factory PedidosLocalData.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,

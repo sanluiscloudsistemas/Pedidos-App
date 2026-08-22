@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_styles.dart';
 import '../widgets/common/list_header_summary.dart';
@@ -8,6 +7,8 @@ import '../widgets/common/preventa_drawer.dart';
 import '../widgets/common/search_filter_bar.dart';
 import 'cliente_detail_screen.dart';
 import 'nuevo_pedido_wizard_screen.dart';
+import 'map_screen.dart';
+
 
 /// Modelo de datos para un Cliente
 class ClienteModel {
@@ -15,12 +16,14 @@ class ClienteModel {
   final String nombre;
   final String documento;
   final String tipoIva;
+  //final String geoposicion;
 
   const ClienteModel({
     required this.codigo,
     required this.nombre,
     required this.documento,
     required this.tipoIva,
+    //requires this.geoposicion,
   });
 }
 
@@ -37,55 +40,77 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
   String _selectedAccion = 'Acciones';
 
   final List<ClienteModel> _clientesOriginales = const [
+    
+    //Solo nombre
+    ClienteModel(
+      codigo: '2068',
+      nombre: 'ABIBE JULIO',
+      documento: 'CUIL : 2068',
+      tipoIva: 'CONSUMIDOR FINAL',
+    ),
+
+     ClienteModel(
+      codigo: '513009',
+      nombre: '1335 DISTRIBUIDORA MAG SRL',
+      documento: 'CUIL : 513009',
+      tipoIva: 'CONSUMIDOR FINAL',
+    ),
+
+    /*
+
     ClienteModel(
       codigo: '1051',
-      nombre: 'CALDERON ELIANA (CF)',
+      nombre: 'CALDERON ELIANA',
       documento: 'CUIL : 1051',
       tipoIva: 'CONSUMIDOR FINAL',
     ),
     ClienteModel(
       codigo: '0193',
-      nombre: 'DOMINGUEZ CARLOS MATIAS (FA)',
+      nombre: 'DOMINGUEZ CARLOS MATIAS',
       documento: 'CUIT : 23334283119',
       tipoIva: 'RESP. INSCRIPTO',
     ),
     ClienteModel(
       codigo: '0016',
-      nombre: 'PIÑEYRO IRMA BRANKA (FA)',
+      nombre: 'PIÑEYRO IRMA BRANKA',
       documento: 'CUIT : 27059203792',
       tipoIva: 'RESP. INSCRIPTO',
     ),
     ClienteModel(
       codigo: '1480',
-      nombre: 'BARROSO VILMA (FA)',
+      nombre: 'BARROSO VILMA',
       documento: 'CUIT : 27201371762',
       tipoIva: 'MONOTRIBUTO',
     ),
     ClienteModel(
       codigo: '1114',
-      nombre: 'SUP. CHINO - DAI BIHUI (FA)',
+      nombre: 'SUP. CHINO - DAI BIHUI',
       documento: 'CUIT : 20957975896',
       tipoIva: 'RESP. INSCRIPTO',
     ),
     ClienteModel(
       codigo: '1198',
-      nombre: 'CAMINOS ARACELI (CF)',
+      nombre: 'CAMINOS ARACELI',
       documento: 'CUIL : 1198',
       tipoIva: 'CONSUMIDOR FINAL',
     ),
     ClienteModel(
       codigo: '0695',
-      nombre: 'CABRERA ANALIA (FA)',
+      nombre: 'CABRERA ANALIA',
       documento: 'CUIT : 27322538680',
       tipoIva: 'RESP. INSCRIPTO',
     ),
     ClienteModel(
       codigo: '1119',
-      nombre: 'FERNANDEZ JUAN CARLOS (FA)',
+      nombre: 'FERNANDEZ JUAN CARLOS',
       documento: 'CUIT : 20319009249',
       tipoIva: 'MONOTRIBUTO',
     ),
+
+    */
+
   ];
+  
 
   @override
   void dispose() {
@@ -93,6 +118,8 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
     super.dispose();
   }
 
+
+  // Filtrados por busqueda de cliente por nombre, CUIT o código...
   List<ClienteModel> get _clientesFiltrados {
     final query = _searchController.text.toLowerCase().trim();
     if (query.isEmpty) return _clientesOriginales;
@@ -102,7 +129,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
           c.codigo.toLowerCase().contains(query) ||
           c.documento.toLowerCase().contains(query) ||
           c.tipoIva.toLowerCase().contains(query);
-    }).toList();
+      }).toList();
   }
 
   @override
@@ -149,8 +176,8 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                           style: const TextStyle(color: AppColors.textDark, fontSize: 14),
                           items: const [
                             DropdownMenuItem(value: 'Acciones', child: Text('Acciones')),
-                            DropdownMenuItem(value: 'exportar', child: Text('Exportar Clientes')),
-                            DropdownMenuItem(value: 'actualizar', child: Text('Actualizar Datos')),
+                            DropdownMenuItem(value: 'Exportar', child: Text('Exportar Clientes')),
+                            DropdownMenuItem(value: 'Actualizar', child: Text('Actualizar Datos')),
                           ],
                           onChanged: (val) {
                             if (val != null) {
@@ -165,19 +192,29 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
               ),
               const SizedBox(height: 12),
 
+              // No va Botón
               // Summary Header con botón Crear
-              ListHeaderSummary(
+
+              
+              ListHeaderSummary( 
                 count: clientesList.length,
-                label: 'clientes',
-                actionButtonText: 'Crear',
-                onActionButtonPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Abriendo formulario de creación de cliente...')),
+                label: '   Lista de Clientes',
+                actionButtonText: 'Mapa',
+                /*
+                onActionButtonPressed: () { 
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MapScreen()),
+                    //MaterialPageRoute(builder: (context) => const MapScreen(latitud:-33.30486, longitud:-66.33618)),
+
                   );
                 },
-              ),
-              const SizedBox(height: 12),
+                */
 
+              ),
+              const SizedBox(height: 12),              
+
+              
               // Tabla de Clientes
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -238,9 +275,9 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                                     nombre: c.nombre,
                                     documento: c.documento,
                                     tipoIva: c.tipoIva,
-                                    telefono: '2664261198',
-                                    estado: 'HABILITADO',
-                                    fecha: '04/12/2014 03:01:16',
+                                    telefono: '2664261198',//c.telefono,//
+                                    estado: 'HABILITADO',//c.estado,//
+                                    fecha: '04/12/2014 03:01:16',//c.fecha,//
                                   ),
                                 ),
                               ),
@@ -295,7 +332,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                               c.nombre,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textDark,
+                                color:  Color(0xFF1976D2), //AppColors.textDark,
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 2,
@@ -331,3 +368,6 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
     );
   }
 }
+
+
+

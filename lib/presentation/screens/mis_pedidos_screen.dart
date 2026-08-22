@@ -12,6 +12,7 @@ import '../widgets/common/search_filter_bar.dart';
 
 /// Modelo de datos para un Pedido en la vista de lista
 class PedidoItemModel {
+  // falta agregar -Forma de Pago- si se va querer mostrar con formato en la lista con el nombre del Cliente.
   final String fechaGeneracion;
   final String codigo;
   final String cliente;
@@ -19,6 +20,7 @@ class PedidoItemModel {
   final String estado;
 
   const PedidoItemModel({
+    // falta agregar -Forma de Pago- si se va querer mostrar con formato en la lista con el nombre del Cliente.
     required this.fechaGeneracion,
     required this.codigo,
     required this.cliente,
@@ -47,6 +49,9 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<PedidoItemModel> _pedidosOriginales = const [
+    //cliente: Nombre del Cliente + (Forma de Pago) + (Código correspondiente)
+
+    /*  
     PedidoItemModel(
       fechaGeneracion: '29/07/2026',
       codigo: '513003',
@@ -82,27 +87,30 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
       monto: 393000.00,
       estado: 'FINALIZADO',
     ),
+    */
     PedidoItemModel(
       fechaGeneracion: '29/07/2026',
       codigo: '513009',
-      cliente: '1335 DISTRIBUIDORA MAG SRL (FA)',
+      cliente: '1335 DISTRIBUIDORA MAG SRL (513009)',
       monto: 67200.00,
       estado: 'FINALIZADO',
     ),
     PedidoItemModel(
       fechaGeneracion: '30/07/2026',
       codigo: '513010',
-      cliente: '0720 BERARDI OLIVA CYNTHIA BELEN (FA)',
+      cliente: '0720 BERARDI OLIVA CYNTHIA BELEN (513010)',
       monto: 15800.00,
       estado: 'NUEVO',
     ),
     PedidoItemModel(
       fechaGeneracion: '30/07/2026',
       codigo: '513011',
-      cliente: '0306 AGUERO CECILIA (FA)',
+      cliente: '0306 AGUERO CECILIA (513011)',
       monto: 28400.00,
       estado: 'PENDIENTE',
     ),
+    
+
   ];
 
   @override

@@ -39,7 +39,7 @@ class PreventaDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    final userName = authNotifier.authResponse?.session ?? 'Preventista';
+    final userName = authNotifier.authResponse?.usuario ?? 'Preventista';
 
     return Drawer(
       child: ListView(
