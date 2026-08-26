@@ -9,7 +9,7 @@ class FakeSyncRepository implements SyncRepository {
 
   @override
   Future<int> saveOrderOffline({
-    required String cliente,
+    required int clienteId,
     required String condicionVenta,
     required String reparto,
     required double totalMonto,
@@ -19,7 +19,7 @@ class FakeSyncRepository implements SyncRepository {
     final newId = _orders.length + 1;
     final orderData = PedidosLocalData(
       id: newId,
-      cliente: cliente,
+      clienteId: clienteId,
       condicionVenta: condicionVenta,
       reparto: reparto,
       totalMonto: totalMonto,
@@ -59,6 +59,28 @@ class FakeSyncRepository implements SyncRepository {
     }
     return count;
   }
+
+  @override
+  Future<int> saveClienteOffline({
+    required String nombre,
+    required String razonSocial,
+    required String documento,
+    required String tipoIva,
+    required String telefono,
+    required String email,
+    required String direccion,
+  }) async {
+    return 1;
+  }
+
+  @override
+  Future<int> saveFaltanteOffline({
+    required String productoId,
+    required String observacion,
+    required String fechaReporte,
+  }) async {
+    return 1;
+  }
 }
 
 void main() {
@@ -82,7 +104,7 @@ void main() {
     expect(connectivityNotifier.isConnected, isFalse);
 
     final orderId = await syncNotifier.saveOrderOffline(
-      cliente: 'CLIENTE PRUEBA OFFLINE',
+      clienteId: 999,
       condicionVenta: 'CONTADO',
       reparto: 'REPARTO 1',
       totalMonto: 15000.0,
@@ -102,7 +124,7 @@ void main() {
     expect(orderId, equals(1));
     final pending = await syncRepository.getPendingSyncOrders();
     expect(pending.length, equals(1));
-    expect(pending.first.order.cliente, equals('CLIENTE PRUEBA OFFLINE'));
+    expect(pending.first.order.clienteId, equals(999));
     expect(pending.first.order.syncStatus, equals('PENDING_SYNC'));
   });
 
@@ -110,7 +132,7 @@ void main() {
     // 1. Crear en modo offline
     connectivityNotifier.toggleManualSimulatedState();
     await syncNotifier.saveOrderOffline(
-      cliente: 'CLIENTE 2',
+      clienteId: 888,
       condicionVenta: 'CONTADO',
       reparto: 'REPARTO 2',
       totalMonto: 20000.0,
