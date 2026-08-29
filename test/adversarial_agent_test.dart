@@ -1,6 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:preventa/data/datasources/local/app_database.dart';
 import 'dart:math';
+import 'package:flutter_test/flutter_test.dart';
 import 'sync_offline_test.dart';
 
 void main() {
@@ -11,8 +10,8 @@ void main() {
     syncRepository = FakeSyncRepository();
   });
 
-  String _generateRandomString(int length) {
-    const chars = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890!@#\$%^&*()_+{}|:"<>?~`-=[]\;,./\'';
+  String generateRandomString(int length) {
+    const chars = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890!@#\$%^&*()_+{}|:"<>?~`-=[]\\;,./\'';
     Random rnd = Random();
     return String.fromCharCodes(Iterable.generate(length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
   }
@@ -20,11 +19,13 @@ void main() {
   test('Agente adversarial: Inyección de datos extremos y malformados en saveOrderOffline', () async {
     // Escenario 1: Valores nulos simulados, strings vacíos y números negativos
     final orderId1 = await syncRepository.saveOrderOffline(
+      organizacionId: 14,
       clienteId: -999, // ID anómalo
+      vendedorId: 23,
+      repartoId: 12,
       condicionVenta: '  ',
-      reparto: _generateRandomString(10000), // String gigante
-      totalMonto: -9999999.99, // Monto negativo
-      fechaGeneracion: '99/99/9999', // Fecha inválida
+      total: -9999999.99, // Monto negativo
+      fecha: '99/99/9999', // Fecha inválida
       items: [
         {
           'codigo': '',
@@ -41,8 +42,8 @@ void main() {
     
     // Escenario 2: Carga masiva de items (Stress test)
     final List<Map<String, dynamic>> massiveItems = List.generate(10000, (index) => {
-      'codigo': 'ITEM_\$index',
-      'descripcion': 'Desc \$index',
+      'codigo': 'ITEM_$index',
+      'descripcion': 'Desc $index',
       'cantidad': 1,
       'precioUnitario': 10.0,
       'descuento': 0.0,
@@ -50,11 +51,13 @@ void main() {
     });
 
     final orderId2 = await syncRepository.saveOrderOffline(
+      organizacionId: 14,
       clienteId: 99999, // ID anómalo de stress
+      vendedorId: 23,
+      repartoId: 12,
       condicionVenta: 'CONTADO',
-      reparto: 'REPARTO STRESS',
-      totalMonto: 100000.0,
-      fechaGeneracion: '31/07/2026',
+      total: 100000.0,
+      fecha: '31/07/2026',
       items: massiveItems,
     );
 
@@ -63,8 +66,5 @@ void main() {
     // Verificación de resiliencia del harness
     final pending = await syncRepository.getPendingSyncOrders();
     expect(pending.length, equals(2));
-    
-    // El agente adversarial verifica que el sistema no crashee y procese los datos anómalos o los rechace de forma controlada.
-    // En este FakeSyncRepository, simplemente se guardan.
   });
 }

@@ -13,7 +13,6 @@ import 'presentation/notifiers/auth_notifier.dart';
 import 'presentation/notifiers/connectivity_notifier.dart';
 import 'presentation/notifiers/sync_notifier.dart';
 import 'presentation/screens/auth_wrapper.dart';
-import 'presentation/screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

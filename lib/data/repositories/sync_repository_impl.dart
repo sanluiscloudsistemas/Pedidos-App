@@ -171,7 +171,7 @@ class SyncRepositoryImpl implements SyncRepository {
             'total': fullOrder.order.total,
           },
           'items': fullOrder.items.map((it) => {
-            'producto_id': it.productoId,
+            'producto_codigo': it.productoId.toString(),
             'cantidad': it.cantidad,
             'precio_unitario': it.precioUnitario,
             'descuento': it.descuento,

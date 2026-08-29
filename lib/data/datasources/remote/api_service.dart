@@ -16,10 +16,15 @@ class ApiService {
   String? _authToken;
   String? _sisorgId;
   String? _sisorgCodigo;
+  String? _sisperId;
+  String? _sisdepId;
 
   String? get currentAuthToken => _authToken;
   String? get currentSisorgId => _sisorgId;
   String? get currentSisorgCodigo => _sisorgCodigo;
+  String? get sisorgId => _sisorgId ?? _sisorgCodigo ?? getSisorgIdFromToken() ?? dotenv.maybeGet('SISORG_CODIGO');
+  String? get sisperId => _sisperId;
+  String? get sisdepId => _sisdepId;
 
   /// Asigna el token JWT en las cabeceras de todas las solicitudes de Dio.
   void setAuthToken(String? token) {
@@ -31,13 +36,24 @@ class ApiService {
     }
   }
 
-  /// Establece explícitamente el sisorg_id y/o sisorg_codigo obtenida en login o almacenamiento.
-  void setOrganizationInfo({String? sisorgId, String? sisorgCodigo}) {
+  /// Establece explícitamente el sisorg_id, sisorg_codigo, sisper_id o sisdep_id.
+  void setOrganizationInfo({
+    String? sisorgId,
+    String? sisorgCodigo,
+    String? sisperId,
+    String? sisdepId,
+  }) {
     if (sisorgId != null && sisorgId.isNotEmpty) {
       _sisorgId = sisorgId;
     }
     if (sisorgCodigo != null && sisorgCodigo.isNotEmpty) {
       _sisorgCodigo = sisorgCodigo;
+    }
+    if (sisperId != null && sisperId.isNotEmpty) {
+      _sisperId = sisperId;
+    }
+    if (sisdepId != null && sisdepId.isNotEmpty) {
+      _sisdepId = sisdepId;
     }
   }
 
@@ -101,6 +117,12 @@ class ApiService {
       if (authResponse.sisorgCodigo != null) {
         _sisorgCodigo = authResponse.sisorgCodigo;
       }
+      if (authResponse.sisperId != null) {
+        _sisperId = authResponse.sisperId;
+      }
+      if (authResponse.sisdepId != null) {
+        _sisdepId = authResponse.sisdepId;
+      }
 
       return authResponse;
     } on DioException catch (e) {
@@ -127,11 +149,41 @@ class ApiService {
 
   Future<Response> postPedido(Map<String, dynamic> payload) async {
     try {
+      final orgId = _sisorgId ??
+          _sisorgCodigo ??
+          getSisorgIdFromToken() ??
+          dotenv.maybeGet('SISORG_CODIGO');
+      final sisperId = _sisperId;
+
+      final headers = <String, dynamic>{};
+      if (orgId != null && orgId.toString().isNotEmpty) {
+        headers['sisorg_id'] = orgId;
+      }
+      if (sisperId != null && sisperId.toString().isNotEmpty) {
+        headers['sisper_id'] = sisperId;
+      }
+
       return await _dio.post(
         ApiEndpoints.pedidos,
         data: payload,
+        options: Options(headers: headers),
+        queryParameters: {
+          if (orgId != null) 'sisorg_id': orgId,
+          if (sisperId != null) 'sisper_id': sisperId,
+        },
       );
     } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map<String, dynamic>) {
+          final msg = data['message'] ?? data['title'] ?? data['error'] ?? data['cause'];
+          if (msg != null && msg.toString().isNotEmpty) {
+            throw Exception('Error al enviar pedido (${e.response?.statusCode}): $msg');
+          }
+        } else if (data is String && data.isNotEmpty) {
+          throw Exception('Error al enviar pedido (${e.response?.statusCode}): $data');
+        }
+      }
       throw Exception('Error al enviar pedido: ${e.message}');
     }
   }

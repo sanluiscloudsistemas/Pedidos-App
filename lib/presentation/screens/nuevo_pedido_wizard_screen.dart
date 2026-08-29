@@ -52,10 +52,10 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   final List<String> _clientesDisponibles = [];
   bool _isLoadingClientes = true;
 
+  // Condición de venta restringida únicamente a CONTADO y CTA CTE
   final List<String> _condicionesVenta = const [
     'CONTADO',
     'CTA CTE',
-    'CHEQUE 30 DIAS',
   ];
 
   // Paso 2 State
@@ -90,7 +90,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   Future<void> _cargarClientes() async {
     try {
       final apiService = context.read<ApiService>();
-      final response = await apiService.getClientes(limit: 100);
+      final response = await apiService.getClientes(limit: 200);
 
       final data = response.data;
       if (data is Map<String, dynamic> && data['items'] is List) {
@@ -103,13 +103,22 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           _clientesModelList = clientes;
           _clientesDisponibles.clear();
           for (final c in clientes) {
-            if (c.nombre.isNotEmpty) {
-              _clientesDisponibles.add(c.nombre);
+            final label = c.codigo.isNotEmpty ? '${c.codigo} - ${c.nombre}' : c.nombre;
+            if (label.isNotEmpty && !_clientesDisponibles.contains(label)) {
+              _clientesDisponibles.add(label);
             }
           }
 
-          if (widget.clienteInicial != null && _clientesDisponibles.contains(widget.clienteInicial)) {
-            _selectedCliente = widget.clienteInicial;
+          if (widget.clienteInicial != null && widget.clienteInicial!.isNotEmpty) {
+            final match = _clientesDisponibles.firstWhere(
+              (label) => label.toLowerCase().contains(widget.clienteInicial!.toLowerCase()),
+              orElse: () => _clientesDisponibles.isNotEmpty ? _clientesDisponibles.first : '',
+            );
+            if (match.isNotEmpty) {
+              _selectedCliente = match;
+            } else if (_clientesDisponibles.isNotEmpty) {
+              _selectedCliente = _clientesDisponibles.first;
+            }
           } else if (_clientesDisponibles.isNotEmpty) {
             _selectedCliente = _clientesDisponibles.first;
           }
@@ -121,6 +130,132 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
     } catch (_) {
       setState(() => _isLoadingClientes = false);
     }
+  }
+
+  void _abrirPopupBusquedaCliente(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final query = searchQuery.toLowerCase().trim();
+            final filtrados = _clientesModelList.where((c) {
+              if (query.isEmpty) return true;
+              return c.nombre.toLowerCase().contains(query) ||
+                  c.codigo.toLowerCase().contains(query) ||
+                  c.documento.toLowerCase().contains(query) ||
+                  c.tipoIva.toLowerCase().contains(query);
+            }).toList();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: 500,
+                height: 550,
+                child: Column(
+                  children: [
+                    // Header del Popup
+                    Container(
+                      color: AppColors.primaryRed,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Seleccionar Cliente',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.pop(dialogContext),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Campo de búsqueda en tiempo real
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por nombre, código o documento...',
+                          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            searchQuery = val;
+                          });
+                        },
+                      ),
+                    ),
+
+                    const Divider(height: 1),
+
+                    // Lista de clientes filtrados
+                    Expanded(
+                      child: filtrados.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No se encontraron clientes',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: filtrados.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final c = filtrados[index];
+                                final label = c.codigo.isNotEmpty ? '${c.codigo} - ${c.nombre}' : c.nombre;
+                                final isSelected = _selectedCliente == label;
+
+                                return ListTile(
+                                  dense: true,
+                                  tileColor: isSelected ? const Color(0xFFE3F2FD) : null,
+                                  title: Text(
+                                    c.nombre,
+                                    style: TextStyle(
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                      color: isSelected ? const Color(0xFF1976D2) : AppColors.textDark,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Código: ${c.codigo}${c.documento.isNotEmpty ? " | Doc: ${c.documento}" : ""}${c.tipoIva.isNotEmpty ? " | ${c.tipoIva}" : ""}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  ),
+                                  trailing: isSelected
+                                      ? const Icon(Icons.check_circle, color: Color(0xFF1976D2), size: 20)
+                                      : const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedCliente = label;
+                                    });
+                                    Navigator.pop(dialogContext);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   double get _totalMonto => _items.fold(0.0, (sum, item) => sum + item.total);
@@ -177,10 +312,10 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       final sisperId = int.tryParse(apiService.sisperId ?? '') ?? 23;
 
       int clienteId = 34;
-      if (_selectedCliente != null) {
+      if (_selectedCliente != null && _clientesModelList.isNotEmpty) {
         final found = _clientesModelList.firstWhere(
-          (c) => c.nombre == _selectedCliente,
-          orElse: () => const ClienteModel(codigo: '34', nombre: '', documento: '', tipoIva: ''),
+          (c) => '${c.codigo} - ${c.nombre}' == _selectedCliente || c.nombre == _selectedCliente,
+          orElse: () => _clientesModelList.first,
         );
         clienteId = found.clienteId ?? int.tryParse(found.codigo) ?? 34;
       }
@@ -191,9 +326,8 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       }
 
       final itemsPayload = _items.map((it) {
-        final prodId = int.tryParse(it.codigo) ?? 123;
         return {
-          'producto_id': prodId,
+          'producto_codigo': it.codigo,
           'cantidad': it.cantidad,
           'precio_unitario': it.precioUnitario,
           'descuento': it.descuento,
@@ -350,14 +484,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
             child: Center(child: CircularProgressIndicator(color: AppColors.primaryRed)),
           )
         else
-          _buildDropdownBox(
-            label: 'Cliente',
-            value: _selectedCliente,
-            items: _clientesDisponibles,
-            onChanged: (val) {
-              if (val != null) setState(() => _selectedCliente = val);
-            },
-          ),
+          _buildClientSelectorBox(),
         const SizedBox(height: 16),
         _buildDropdownBox(
           label: 'Condición de Venta',
@@ -366,6 +493,45 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           onChanged: (val) => setState(() => _selectedCondicionVenta = val!),
         ),
       ],
+    );
+  }
+
+  Widget _buildClientSelectorBox() {
+    return InkWell(
+      onTap: () => _abrirPopupBusquedaCliente(context),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFF4A89DC), width: 1.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Cliente', style: TextStyle(fontSize: 11, color: Color(0xFF757575))),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedCliente ?? 'Seleccione un cliente...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _selectedCliente != null ? const Color(0xFF212121) : AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.search, color: Color(0xFF1976D2), size: 20),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

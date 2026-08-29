@@ -9,6 +9,8 @@ class AuthResponse {
   final String? resultado;
   final String? sisorgId;
   final String? sisorgCodigo;
+  final String? sisperId;
+  final String? sisdepId;
 
   AuthResponse({
     this.token,
@@ -19,43 +21,54 @@ class AuthResponse {
     this.resultado,
     this.sisorgId,
     this.sisorgCodigo,
+    this.sisperId,
+    this.sisdepId,
   });
 
   /// Retorna el token JWT prioritario (o la sesión como fallback).
   String? get jwtToken => token ?? session;
 
+  static String? _cleanStr(dynamic val) {
+    if (val == null) return null;
+    final str = val.toString().trim();
+    if (str.startsWith("'") && str.endsWith("'") && str.length >= 2) {
+      return str.substring(1, str.length - 1).trim();
+    }
+    if (str.startsWith("'")) {
+      return str.substring(1).trim();
+    }
+    return str;
+  }
+
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
-    String? token = json['token'] as String? ?? json['jwt'] as String?;
-    String? session = json['session'] as String?;
+    String? token = _cleanStr(json['token'] ?? json['jwt']);
+    String? session = _cleanStr(json['session']);
     bool? success = json['success'] as bool?;
-    String? message = json['message'] as String?;
+    String? message = _cleanStr(json['message']);
     final String? resultadoStr = json['resultado'] as String?;
 
-    String? sisorgId = json['sisorg_id']?.toString() ??
-        json['sisorgId']?.toString() ??
-        json['organizacion_id']?.toString();
-    String? sisorgCodigo = json['sisorg_codigo']?.toString() ??
-        json['sisorgCodigo']?.toString() ??
-        json['organizacion']?.toString();
+    String? sisorgId = _cleanStr(json['sisorg_id'] ?? json['sisorgId'] ?? json['organizacion_id']);
+    String? sisorgCodigo = _cleanStr(json['sisorg_codigo'] ?? json['sisorgCodigo'] ?? json['organizacion']);
+    String? sisperId = _cleanStr(json['sisper_id'] ?? json['sisperId']);
+    String? sisdepId = _cleanStr(json['sisdep_id'] ?? json['sisdepId']);
 
     if (resultadoStr != null && resultadoStr.trim().startsWith('{')) {
       try {
         final Map<String, dynamic> nestedJson = jsonDecode(resultadoStr);
         if (nestedJson.containsKey('token')) {
-          token ??= nestedJson['token'] as String?;
+          token ??= _cleanStr(nestedJson['token']);
         }
         if (nestedJson.containsKey('estado')) {
-          success ??= (nestedJson['estado'] == 'Autenticado' || nestedJson['estado'] == 'OK');
+          final estadoStr = _cleanStr(nestedJson['estado']);
+          success ??= (estadoStr == 'Autenticado' || estadoStr == 'OK');
         }
         if (nestedJson.containsKey('nombre')) {
-          message ??= nestedJson['nombre'] as String?;
+          message ??= _cleanStr(nestedJson['nombre']);
         }
-        sisorgId ??= nestedJson['sisorg_id']?.toString() ??
-            nestedJson['sisorgId']?.toString() ??
-            nestedJson['organizacion_id']?.toString();
-        sisorgCodigo ??= nestedJson['sisorg_codigo']?.toString() ??
-            nestedJson['sisorgCodigo']?.toString() ??
-            nestedJson['organizacion']?.toString();
+        sisorgId ??= _cleanStr(nestedJson['sisorg_id'] ?? nestedJson['sisorgId'] ?? nestedJson['organizacion_id']);
+        sisorgCodigo ??= _cleanStr(nestedJson['sisorg_codigo'] ?? nestedJson['sisorgCodigo'] ?? nestedJson['organizacion']);
+        sisperId ??= _cleanStr(nestedJson['sisper_id'] ?? nestedJson['sisperId']);
+        sisdepId ??= _cleanStr(nestedJson['sisdep_id'] ?? nestedJson['sisdepId']);
       } catch (_) {}
     }
 
@@ -75,6 +88,8 @@ class AuthResponse {
       resultado: resultadoStr,
       sisorgId: sisorgId,
       sisorgCodigo: sisorgCodigo,
+      sisperId: sisperId,
+      sisdepId: sisdepId,
     );
   }
 
@@ -88,6 +103,8 @@ class AuthResponse {
       'resultado': resultado,
       'sisorg_id': sisorgId,
       'sisorg_codigo': sisorgCodigo,
+      'sisper_id': sisperId,
+      'sisdep_id': sisdepId,
     };
   }
 }
