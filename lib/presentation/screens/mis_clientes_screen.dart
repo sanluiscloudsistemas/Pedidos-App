@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_styles.dart';
 import '../../data/datasources/remote/api_service.dart';
@@ -94,57 +97,104 @@ class MisClientesScreen extends StatefulWidget {
 }
 
 class _MisClientesScreenState extends State<MisClientesScreen> {
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
   List<ClienteModel> _clientesOriginales = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _offset = 0;
+  final int _limit = 25;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _cargarClientes();
+    _scrollController.addListener(_onScroll);
+    _cargarClientes(isRefresh: true);
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _cargarClientes() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoading &&
+        !_isLoadingMore &&
+        _hasMore &&
+        _searchController.text.trim().isEmpty) {
+      _cargarMasClientes();
+    }
+  }
+
+  Future<void> _cargarClientes({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _offset = 0;
+        _hasMore = true;
+      });
+    }
 
     try {
       final apiService = context.read<ApiService>();
-      final response = await apiService.getClientes();
+      final response = await apiService.getClientes(
+        offset: _offset,
+        limit: _limit,
+      );
 
       final data = response.data;
       if (data is Map<String, dynamic> && data['items'] is List) {
         final List itemsJson = data['items'];
-        final clientes = itemsJson
+        final clientesNuevos = itemsJson
             .map((item) => ClienteModel.fromJson(item as Map<String, dynamic>))
             .toList();
 
+        final hasMoreServer = data['hasMore'] == true || clientesNuevos.length >= _limit;
+
         setState(() {
-          _clientesOriginales = clientes;
+          if (isRefresh) {
+            _clientesOriginales = clientesNuevos;
+          } else {
+            _clientesOriginales.addAll(clientesNuevos);
+          }
+          _offset = _clientesOriginales.length;
+          _hasMore = hasMoreServer && clientesNuevos.isNotEmpty;
           _isLoading = false;
+          _isLoadingMore = false;
         });
       } else {
         setState(() {
           _errorMessage = 'Formato de respuesta no válido.';
           _isLoading = false;
+          _isLoadingMore = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error al cargar clientes: $e';
+        if (isRefresh) {
+          _errorMessage = 'Error al cargar clientes: $e';
+        }
         _isLoading = false;
+        _isLoadingMore = false;
       });
     }
+  }
+
+  Future<void> _cargarMasClientes() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() {
+      _isLoadingMore = true;
+    });
+    await _cargarClientes(isRefresh: false);
   }
 
   // Filtrados por busqueda de cliente por nombre, CUIT o código...
@@ -186,8 +236,154 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
     return dir.isNotEmpty ? dir : loc;
   }
 
+  LatLng? _parseGeoposicion(String? geo) {
+    if (geo == null || geo.trim().isEmpty) return null;
+    final parts = geo.split(',');
+    if (parts.length >= 2) {
+      final lat = double.tryParse(parts[0].trim());
+      final lng = double.tryParse(parts[1].trim());
+      if (lat != null && lng != null) {
+        return LatLng(lat, lng);
+      }
+    }
+    return null;
+  }
+
+  void _mostrarMapaPopup(BuildContext context, ClienteModel c) {
+    final coords = _parseGeoposicion(c.geoposicion);
+    final direccionTexto = _formatDireccion(c);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 450,
+            height: 480,
+            child: Column(
+              children: [
+                // Header del Popup
+                Container(
+                  color: AppColors.primaryRed,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Ubicación: ${c.nombre}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Información de Dirección y Coordenadas
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, size: 16, color: AppColors.primaryRed),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              direccionTexto.isNotEmpty ? direccionTexto : 'Sin dirección registrada',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textDark),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (c.geoposicion != null && c.geoposicion!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Geoposición: ${c.geoposicion}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const Divider(height: 1),
+
+                // Mapa de OpenStreetMap o mensaje sin geolocalización
+                Expanded(
+                  child: coords != null
+                      ? FlutterMap(
+                          options: MapOptions(
+                            initialCenter: coords,
+                            initialZoom: 15.0,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.sanluiscloud.preventa',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: coords,
+                                  width: 50,
+                                  height: 50,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: AppColors.primaryRed,
+                                    size: 42,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
+                      : Container(
+                          color: Colors.grey.shade100,
+                          padding: const EdgeInsets.all(24.0),
+                          alignment: Alignment.center,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.location_off, size: 48, color: AppColors.textSecondary),
+                              SizedBox(height: 12),
+                              Text(
+                                'Este cliente no cuenta con coordenadas de geolocalización registradas.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildClientCard(ClienteModel c) {
     final direccionTexto = _formatDireccion(c);
+    final tieneGeo = c.geoposicion != null && c.geoposicion!.trim().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -266,9 +462,9 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
           ),
           const SizedBox(height: 4),
 
-          // Dirección
+          // Dirección con botón de Mapa en Popup
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text(
                 'Dirección: ',
@@ -279,6 +475,17 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
                   direccionTexto.isNotEmpty ? direccionTexto : 'Sin dirección',
                   style: const TextStyle(fontSize: 12, color: AppColors.textDark),
                 ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  Icons.map_outlined,
+                  size: 20,
+                  color: tieneGeo ? const Color(0xFF1976D2) : AppColors.textSecondary,
+                ),
+                onPressed: () => _mostrarMapaPopup(context, c),
+                tooltip: 'Ver ubicación en mapa',
               ),
             ],
           ),
@@ -346,6 +553,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
         ],
         rows: clientesList.map((c) {
           final direccionTexto = _formatDireccion(c);
+          final tieneGeo = c.geoposicion != null && c.geoposicion!.trim().isNotEmpty;
 
           return DataRow(cells: [
             DataCell(
@@ -403,16 +611,33 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
             ),
             DataCell(
               SizedBox(
-                width: 200,
-                child: Text(
-                  direccionTexto,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDark,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                width: 220,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        direccionTexto,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDark,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        Icons.map_outlined,
+                        size: 18,
+                        color: tieneGeo ? const Color(0xFF1976D2) : AppColors.textSecondary,
+                      ),
+                      onPressed: () => _mostrarMapaPopup(context, c),
+                      tooltip: 'Ver ubicación en mapa',
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -448,7 +673,7 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: _cargarClientes,
+                onPressed: () => _cargarClientes(isRefresh: true),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reintentar'),
               ),
@@ -515,9 +740,21 @@ class _MisClientesScreenState extends State<MisClientesScreen> {
       ),
       drawer: const PreventaDrawer(),
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: Padding(
           padding: const EdgeInsets.all(12.0),
-          child: _buildBody(clientesList),
+          child: Column(
+            children: [
+              _buildBody(clientesList),
+              if (_isLoadingMore)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primaryRed),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

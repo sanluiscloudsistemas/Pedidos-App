@@ -136,6 +136,42 @@ class ApiService {
     }
   }
 
+  Future<Response> getPedidos({
+    dynamic sisorgId,
+    dynamic sisperId,
+    int offset = 0,
+    int limit = 25,
+  }) async {
+    try {
+      final orgId = sisorgId ??
+          _sisorgId ??
+          _sisorgCodigo ??
+          getSisorgIdFromToken() ??
+          dotenv.maybeGet('SISORG_CODIGO');
+
+      final headers = <String, dynamic>{};
+      if (orgId != null && orgId.toString().isNotEmpty) {
+        headers['sisorg_id'] = orgId;
+      }
+      if (sisperId != null && sisperId.toString().isNotEmpty) {
+        headers['sisper_id'] = sisperId;
+      }
+
+      return await _dio.get(
+        ApiEndpoints.pedidos,
+        options: Options(headers: headers),
+        queryParameters: {
+          'sisorg_id': orgId,
+          if (sisperId != null) 'sisper_id': sisperId,
+          'offset': offset,
+          'limit': limit,
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al obtener pedidos: ${e.message}');
+    }
+  }
+
   Future<Response> postCliente(Map<String, dynamic> payload) async {
     try {
       return await _dio.post(
@@ -147,7 +183,11 @@ class ApiService {
     }
   }
 
-  Future<Response> getClientes({dynamic sisorgId}) async {
+  Future<Response> getClientes({
+    dynamic sisorgId,
+    int offset = 0,
+    int limit = 25,
+  }) async {
     try {
       final orgId = sisorgId ??
           _sisorgId ??
@@ -163,7 +203,11 @@ class ApiService {
 
       return await _dio.get(
         ApiEndpoints.clientes,
-        queryParameters: {'sisorg_id': orgId},
+        queryParameters: {
+          'sisorg_id': orgId,
+          'offset': offset,
+          'limit': limit,
+        },
       );
     } on DioException catch (e) {
       throw Exception('Error al obtener clientes: ${e.message}');

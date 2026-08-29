@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/datasources/remote/api_service.dart';
 import '../notifiers/connectivity_notifier.dart';
 import '../notifiers/sync_notifier.dart';
 import '../widgets/common/preventa_app_bar.dart';
 import '../widgets/common/preventa_drawer.dart';
+import 'mis_clientes_screen.dart';
 
 /// Modelo borrador para un Item de Pedido
 class OrderItemDraft {
@@ -43,10 +45,12 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   int _currentStep = 1;
 
   // Paso 1 State
-  late String _selectedCliente;
+  String? _selectedCliente;
   String _selectedCondicionVenta = 'CONTADO';
- 
+
+  List<ClienteModel> _clientesModelList = [];
   final List<String> _clientesDisponibles = [];
+  bool _isLoadingClientes = true;
 
   final List<String> _condicionesVenta = const [
     'CONTADO',
@@ -56,31 +60,67 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
 
   // Paso 2 State
   final List<OrderItemDraft> _items = [];
-  final TextEditingController _productoController = TextEditingController(text: '651');
-  final TextEditingController _cantidadController = TextEditingController(text: '5');
-  final TextEditingController _descuentoController = TextEditingController();
+  final TextEditingController _productoController = TextEditingController(text: '123');
+  final TextEditingController _cantidadController = TextEditingController(text: '1');
+  final TextEditingController _precioController = TextEditingController(text: '10000.00');
+  final TextEditingController _descuentoController = TextEditingController(text: '0');
 
   // Paso 3 State
   String? _selectedReparto;
+  final List<String> _repartosDisponibles = ['REPARTO CENTRO - ZONA 1 (ID: 12)', 'REPARTO NORTE - ZONA 2 (ID: 13)'];
 
-  final List<String> _repartosDisponibles = [];
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedCliente = widget.clienteInicial ?? (_clientesDisponibles.isNotEmpty ? _clientesDisponibles.first : '');
-    _selectedReparto = _repartosDisponibles.isNotEmpty ? _repartosDisponibles.first : null;
-    
-    // Dejamos la lista de items inicial vacía (removiendo el producto hardcodeado)
-    // _items.add(...)
+    _selectedReparto = _repartosDisponibles.first;
+    _cargarClientes();
   }
 
   @override
   void dispose() {
     _productoController.dispose();
     _cantidadController.dispose();
+    _precioController.dispose();
     _descuentoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cargarClientes() async {
+    try {
+      final apiService = context.read<ApiService>();
+      final response = await apiService.getClientes(limit: 100);
+
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['items'] is List) {
+        final List itemsJson = data['items'];
+        final clientes = itemsJson
+            .map((item) => ClienteModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+
+        setState(() {
+          _clientesModelList = clientes;
+          _clientesDisponibles.clear();
+          for (final c in clientes) {
+            if (c.nombre.isNotEmpty) {
+              _clientesDisponibles.add(c.nombre);
+            }
+          }
+
+          if (widget.clienteInicial != null && _clientesDisponibles.contains(widget.clienteInicial)) {
+            _selectedCliente = widget.clienteInicial;
+          } else if (_clientesDisponibles.isNotEmpty) {
+            _selectedCliente = _clientesDisponibles.first;
+          }
+          _isLoadingClientes = false;
+        });
+      } else {
+        setState(() => _isLoadingClientes = false);
+      }
+    } catch (_) {
+      setState(() => _isLoadingClientes = false);
+    }
   }
 
   double get _totalMonto => _items.fold(0.0, (sum, item) => sum + item.total);
@@ -88,6 +128,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   void _agregarProducto() {
     final codigo = _productoController.text.trim();
     final cant = int.tryParse(_cantidadController.text.trim()) ?? 1;
+    final precio = double.tryParse(_precioController.text.trim()) ?? 10000.00;
     final desc = double.tryParse(_descuentoController.text.trim()) ?? 0.0;
 
     if (codigo.isEmpty) return;
@@ -96,9 +137,9 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       _items.add(
         OrderItemDraft(
           codigo: codigo,
-          descripcion: '$codigo - PRODUCTO GENERAL REGULAR DE PRUEBA',
+          descripcion: 'PRODUCTO ID: $codigo',
           cantidad: cant,
-          precioUnitario: 2100.00,
+          precioUnitario: precio,
           descuento: desc,
         ),
       );
@@ -113,42 +154,114 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   }
 
   void _confirmarPedido(BuildContext context) async {
-    final syncNotifier = Provider.of<SyncNotifier>(context, listen: false);
-    
-    final mappedItems = _items
-        .map((it) => {
-              'productoId': int.tryParse(it.codigo) ?? 0,
-              'cantidad': it.cantidad,
-              'precioUnitario': it.precioUnitario,
-              'descuento': it.descuento,
-              'precioTotal': it.total,
-            })
-        .toList();
+    if (_isSubmitting) return;
 
-    await syncNotifier.saveOrderOffline(
-      organizacionId: 14, // TODO: Tomar de AuthNotifier cuando esté disponible como entero
-      clienteId: 0,       // TODO: Obtener el ID del cliente seleccionado
-      vendedorId: 23,     // TODO: Obtener el ID del vendedor
-      repartoId: 0,       // TODO: Obtener el ID del reparto
-      condicionVenta: _selectedCondicionVenta,
-      total: _totalMonto,
-      fecha: DateTime.now().toIso8601String().split('T').first,
-      items: mappedItems,
-    );
-
-    if (context.mounted) {
-      final isOnline = Provider.of<ConnectivityNotifier>(context, listen: false).isConnected;
+    if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isOnline
-                ? '¡Pedido creado y sincronizado con la nube!'
-                : '¡Pedido guardado en la base de datos local (Drift)! Se sincronizará automáticamente al reconectarse a Internet.',
-          ),
-          duration: const Duration(seconds: 4),
-        ),
+        const SnackBar(content: Text('Debe agregar al menos un producto al pedido.')),
       );
-      Navigator.pop(context);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final apiService = context.read<ApiService>();
+      final syncNotifier = Provider.of<SyncNotifier>(context, listen: false);
+      final isOnline = Provider.of<ConnectivityNotifier>(context, listen: false).isConnected;
+
+      final now = DateTime.now();
+      final fechaStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+
+      final orgId = int.tryParse(apiService.sisorgId ?? '') ?? 14;
+      final sisperId = int.tryParse(apiService.sisperId ?? '') ?? 23;
+
+      int clienteId = 34;
+      if (_selectedCliente != null) {
+        final found = _clientesModelList.firstWhere(
+          (c) => c.nombre == _selectedCliente,
+          orElse: () => const ClienteModel(codigo: '34', nombre: '', documento: '', tipoIva: ''),
+        );
+        clienteId = found.clienteId ?? int.tryParse(found.codigo) ?? 34;
+      }
+
+      int repartoId = 12;
+      if (_selectedReparto != null && _selectedReparto!.contains('13')) {
+        repartoId = 13;
+      }
+
+      final itemsPayload = _items.map((it) {
+        final prodId = int.tryParse(it.codigo) ?? 123;
+        return {
+          'producto_id': prodId,
+          'cantidad': it.cantidad,
+          'precio_unitario': it.precioUnitario,
+          'descuento': it.descuento,
+          'precio_total': it.total,
+        };
+      }).toList();
+
+      final payload = {
+        'pedido': {
+          'organizacion_id': orgId,
+          'cliente_id': clienteId,
+          'vendedor_id': sisperId,
+          'reparto_id': repartoId,
+          'fecha': fechaStr,
+          'condicionventa': _selectedCondicionVenta,
+          'total': _totalMonto,
+        },
+        'items': itemsPayload,
+      };
+
+      if (isOnline) {
+        await apiService.postPedido(payload);
+      } else {
+        await syncNotifier.saveOrderOffline(
+          organizacionId: orgId,
+          clienteId: clienteId,
+          vendedorId: sisperId,
+          repartoId: repartoId,
+          condicionVenta: _selectedCondicionVenta,
+          total: _totalMonto,
+          fecha: fechaStr,
+          items: _items
+              .map((it) => {
+                    'productoId': int.tryParse(it.codigo) ?? 123,
+                    'cantidad': it.cantidad,
+                    'precioUnitario': it.precioUnitario,
+                    'descuento': it.descuento,
+                    'precioTotal': it.total,
+                  })
+              .toList(),
+        );
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isOnline
+                  ? '¡Pedido #POST enviado exitosamente a la nube!'
+                  : '¡Pedido guardado en SQLite local! Se sincronizará automáticamente al reconectar.',
+            ),
+            backgroundColor: isOnline ? Colors.green : AppColors.warningOrange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al enviar pedido: $e'),
+            backgroundColor: AppColors.primaryRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -157,7 +270,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const PreventaAppBar(
-        title: 'PEDIDOS',
+        title: 'NUEVO PEDIDO',
         showBackButton: true,
       ),
       drawer: const PreventaDrawer(),
@@ -206,11 +319,19 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F), 
+                backgroundColor: const Color(0xFFD32F2F),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
-              onPressed: () => setState(() => _currentStep = 2),
+              onPressed: () {
+                if (_selectedCliente == null || _selectedCliente!.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Seleccione un cliente para continuar.')),
+                  );
+                  return;
+                }
+                setState(() => _currentStep = 2);
+              },
               icon: const SizedBox.shrink(),
               label: Row(
                 children: const [
@@ -223,14 +344,20 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        _buildDropdownBox(
-          label: 'Cliente',
-          value: _clientesDisponibles.isEmpty ? null : _selectedCliente,
-          items: _clientesDisponibles,
-          onChanged: (val) {
-            if (val != null) setState(() => _selectedCliente = val);
-          },
-        ),
+        if (_isLoadingClientes)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primaryRed)),
+          )
+        else
+          _buildDropdownBox(
+            label: 'Cliente',
+            value: _selectedCliente,
+            items: _clientesDisponibles,
+            onChanged: (val) {
+              if (val != null) setState(() => _selectedCliente = val);
+            },
+          ),
         const SizedBox(height: 16),
         _buildDropdownBox(
           label: 'Condición de Venta',
@@ -244,7 +371,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
 
   // PASO 2: Carga de Productos
   Widget _buildStep2() {
-    final formattedTotal = '\$${_totalMonto.toStringAsFixed(0)}';
+    final formattedTotal = '\$${_totalMonto.toStringAsFixed(2).replaceAll('.', ',')}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -288,7 +415,15 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
-              onPressed: () => setState(() => _currentStep = 3),
+              onPressed: () {
+                if (_items.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Agregue al menos un producto.')),
+                  );
+                  return;
+                }
+                setState(() => _currentStep = 3);
+              },
               icon: const SizedBox.shrink(),
               label: Row(
                 children: const [
@@ -302,37 +437,71 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Campo Producto
-        const Text('Producto', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
+        // Campo Producto ID
+        const Text('ID Producto', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
         const SizedBox(height: 4),
         SizedBox(
           height: 38,
           child: TextField(
             controller: _productoController,
-            style: const TextStyle(fontSize: 13),
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              border: OutlineInputBorder(),
-              hintText: 'Código o nombre',
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Campo Cantidad
-        const Text('Cantidad', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 38,
-          child: TextField(
-            controller: _cantidadController,
             keyboardType: TextInputType.number,
             style: const TextStyle(fontSize: 13),
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               border: OutlineInputBorder(),
+              hintText: 'ID o código de producto',
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+
+        // Campo Cantidad y Precio Unitario
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Cantidad', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _cantidadController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontSize: 13),
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Precio Unitario', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _precioController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(fontSize: 13),
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -343,6 +512,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           height: 38,
           child: TextField(
             controller: _descuentoController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: const TextStyle(fontSize: 13),
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -398,7 +568,6 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                     DataColumn(label: Text('Desc.', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
                     DataColumn(label: Text('Total', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
                     DataColumn(label: Text('Accion', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
-                    DataColumn(label: Text('Descripcion', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
                   ],
                   rows: [
                     ..._items.asMap().entries.map((entry) {
@@ -408,7 +577,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                         DataCell(Text(item.codigo, style: const TextStyle(fontSize: 12))),
                         DataCell(Text('${item.cantidad}', style: const TextStyle(fontSize: 12))),
                         DataCell(Text('\$${item.precioUnitario.toStringAsFixed(2).replaceAll('.', ',')}', style: const TextStyle(fontSize: 12))),
-                        DataCell(Text(item.descuento > 0 ? '\$${item.descuento.toStringAsFixed(2)}' : '', style: const TextStyle(fontSize: 12))),
+                        DataCell(Text(item.descuento > 0 ? '\$${item.descuento.toStringAsFixed(2)}' : '0', style: const TextStyle(fontSize: 12))),
                         DataCell(Text('\$${item.total.toStringAsFixed(2).replaceAll('.', ',')}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
                         DataCell(
                           IconButton(
@@ -416,12 +585,6 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                             constraints: const BoxConstraints(),
                             icon: const Icon(Icons.cancel, color: Color(0xFFD32F2F), size: 18),
                             onPressed: () => _eliminarProducto(idx),
-                          ),
-                        ),
-                        DataCell(
-                          SizedBox(
-                            width: 140,
-                            child: Text(item.descripcion, style: const TextStyle(fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
                           ),
                         ),
                       ]);
@@ -439,7 +602,6 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                           ),
                         ),
                         const DataCell(SizedBox.shrink()),
-                        const DataCell(SizedBox.shrink()),
                       ]),
                   ],
                 ),
@@ -447,7 +609,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  '1 - ${_items.length}',
+                  'Total de ítems: ${_items.length}',
                   style: const TextStyle(fontSize: 12, color: Color(0xFF757575)),
                 ),
               ),
@@ -491,16 +653,18 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
-              onPressed: () => _confirmarPedido(context),
-              child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: _isSubmitting ? null : () => _confirmarPedido(context),
+              child: _isSubmitting
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
         const SizedBox(height: 20),
 
-        _buildReadOnlyDetailBox('Cliente', _selectedCliente),
+        _buildReadOnlyDetailBox('Cliente', _selectedCliente ?? 'Sin cliente'),
         _buildReadOnlyDetailBox('Condición de Venta', _selectedCondicionVenta),
-        _buildReadOnlyDetailBox('TOTAL', _totalMonto.toStringAsFixed(0)),
+        _buildReadOnlyDetailBox('TOTAL', '\$ ${_totalMonto.toStringAsFixed(2)}'),
 
         const SizedBox(height: 12),
         _buildDropdownBox(
@@ -508,7 +672,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           value: _repartosDisponibles.isEmpty ? null : _selectedReparto,
           items: _repartosDisponibles,
           onChanged: (val) {
-             if (val != null) setState(() => _selectedReparto = val);
+            if (val != null) setState(() => _selectedReparto = val);
           },
         ),
       ],
@@ -536,7 +700,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
               value: items.isEmpty ? null : value,
               isExpanded: true,
               style: const TextStyle(fontSize: 14, color: Color(0xFF212121), fontWeight: FontWeight.w500),
-              items: items.isEmpty 
+              items: items.isEmpty
                   ? [const DropdownMenuItem<String>(value: null, child: Text('No hay datos'))]
                   : items.map((it) {
                       return DropdownMenuItem(value: it, child: Text(it));
