@@ -63,19 +63,23 @@ class SyncNotifier extends ChangeNotifier {
 
   /// Guarda un nuevo pedido de forma offline en Drift SQLite
   Future<int> saveOrderOffline({
-    required String cliente,
+    required int organizacionId,
+    required int clienteId,
+    required int vendedorId,
+    required int repartoId,
     required String condicionVenta,
-    required String reparto,
-    required double totalMonto,
-    required String fechaGeneracion,
+    required double total,
+    required String fecha,
     required List<Map<String, dynamic>> items,
   }) async {
     final id = await syncRepository.saveOrderOffline(
-      cliente: cliente,
+      organizacionId: organizacionId,
+      clienteId: clienteId,
+      vendedorId: vendedorId,
+      repartoId: repartoId,
       condicionVenta: condicionVenta,
-      reparto: reparto,
-      totalMonto: totalMonto,
-      fechaGeneracion: fechaGeneracion,
+      total: total,
+      fecha: fecha,
       items: items,
     );
 
@@ -84,6 +88,60 @@ class SyncNotifier extends ChangeNotifier {
       syncPendingOrdersNow();
     }
 
+    return id;
+  }
+
+  /// Guarda un cliente nuevo offline
+  Future<int> saveClienteOffline({
+    required int organizacionId,
+    required int vendedorId,
+    required String nombre,
+    required String razonSocial,
+    required String tipoDocumento,
+    required String numeroDocumento,
+    required String tipoIva,
+    String? telefono,
+    String? emailPrincipal,
+    String? geoposicion,
+  }) async {
+    final id = await syncRepository.saveClienteOffline(
+      organizacionId: organizacionId,
+      vendedorId: vendedorId,
+      nombre: nombre,
+      razonSocial: razonSocial,
+      tipoDocumento: tipoDocumento,
+      numeroDocumento: numeroDocumento,
+      tipoIva: tipoIva,
+      telefono: telefono,
+      emailPrincipal: emailPrincipal,
+      geoposicion: geoposicion,
+    );
+
+    if (connectivityNotifier.isConnected) {
+      syncPendingOrdersNow();
+    }
+    return id;
+  }
+
+  /// Guarda un faltante offline
+  Future<int> saveFaltanteOffline({
+    required int organizacionId,
+    required int vendedorId,
+    required int productoId,
+    required String fecha,
+    String? observacion,
+  }) async {
+    final id = await syncRepository.saveFaltanteOffline(
+      organizacionId: organizacionId,
+      vendedorId: vendedorId,
+      productoId: productoId,
+      fecha: fecha,
+      observacion: observacion,
+    );
+
+    if (connectivityNotifier.isConnected) {
+      syncPendingOrdersNow();
+    }
     return id;
   }
 
@@ -99,7 +157,7 @@ class SyncNotifier extends ChangeNotifier {
       final count = await syncRepository.syncPendingOrders();
       _lastSyncedCount = count;
       if (count > 0) {
-        _lastSyncMessage = '¡Se sincronizaron $count pedido(s) guardado(s) offline con éxito!';
+        _lastSyncMessage = '¡Se sincronizaron $count registro(s) guardado(s) offline con éxito!';
       }
       return count;
     } catch (e) {

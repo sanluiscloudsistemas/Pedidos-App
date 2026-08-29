@@ -34,18 +34,31 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final token = response.jwtToken;
       if (token != null && token.isNotEmpty) {
+        String finalUsuario = usuario;
+        try {
+          final decodedToken = JwtDecoder.decode(token);
+          if (decodedToken.containsKey('sub')) {
+            finalUsuario = decodedToken['sub'].toString();
+          }
+        } catch (_) {}
+
         // Guardar token y credenciales en SecureStorage
         await _secureStorage.saveToken(token);
         await _secureStorage.saveUserData(
-          usuario: usuario,
+          usuario: finalUsuario,
           organizacion: organizacion,
+          sisorgId: response.sisorgId,
         );
 
         _apiService.setAuthToken(token);
+        _apiService.setOrganizationInfo(
+          sisorgId: response.sisorgId,
+          sisorgCodigo: response.sisorgCodigo,
+        );
 
         return UserEntity(
           token: token,
-          usuario: usuario,
+          usuario: finalUsuario,
           organizacion: organizacion,
           isOfflineSession: false,
         );
@@ -105,14 +118,23 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     final userData = await _secureStorage.getUserData();
-    final usuario = userData?['usuario'] ?? 'Usuario';
+    String finalUsuario = userData?['usuario'] ?? 'Usuario';
     final organizacion = userData?['organizacion'] ?? '';
+    final sisorgId = userData?['sisorgId'];
+    
+    try {
+      final decodedToken = JwtDecoder.decode(token);
+      if (decodedToken.containsKey('sub')) {
+        finalUsuario = decodedToken['sub'].toString();
+      }
+    } catch (_) {}
 
     _apiService.setAuthToken(token);
+    _apiService.setOrganizationInfo(sisorgId: sisorgId);
 
     return UserEntity(
       token: token,
-      usuario: usuario,
+      usuario: finalUsuario,
       organizacion: organizacion,
       isOfflineSession: true, // Indica que la sesión fue recuperada localmente
     );

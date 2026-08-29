@@ -9,21 +9,25 @@ class FakeSyncRepository implements SyncRepository {
 
   @override
   Future<int> saveOrderOffline({
-    required String cliente,
+    required int organizacionId,
+    required int clienteId,
+    required int vendedorId,
+    required int repartoId,
     required String condicionVenta,
-    required String reparto,
-    required double totalMonto,
-    required String fechaGeneracion,
+    required double total,
+    required String fecha,
     required List<Map<String, dynamic>> items,
   }) async {
     final newId = _orders.length + 1;
     final orderData = PedidosLocalData(
       id: newId,
-      cliente: cliente,
+      organizacionId: organizacionId,
+      clienteId: clienteId,
+      vendedorId: vendedorId,
+      repartoId: repartoId,
       condicionVenta: condicionVenta,
-      reparto: reparto,
-      totalMonto: totalMonto,
-      fechaGeneracion: fechaGeneracion,
+      total: total,
+      fecha: fecha,
       syncStatus: 'PENDING_SYNC',
       createdAt: DateTime.now(),
     );
@@ -59,6 +63,33 @@ class FakeSyncRepository implements SyncRepository {
     }
     return count;
   }
+
+  @override
+  Future<int> saveClienteOffline({
+    required int organizacionId,
+    required int vendedorId,
+    required String nombre,
+    required String razonSocial,
+    required String tipoDocumento,
+    required String numeroDocumento,
+    required String tipoIva,
+    String? telefono,
+    String? emailPrincipal,
+    String? geoposicion,
+  }) async {
+    return 1;
+  }
+
+  @override
+  Future<int> saveFaltanteOffline({
+    required int organizacionId,
+    required int vendedorId,
+    required int productoId,
+    required String fecha,
+    String? observacion,
+  }) async {
+    return 1;
+  }
 }
 
 void main() {
@@ -82,19 +113,20 @@ void main() {
     expect(connectivityNotifier.isConnected, isFalse);
 
     final orderId = await syncNotifier.saveOrderOffline(
-      cliente: 'CLIENTE PRUEBA OFFLINE',
+      organizacionId: 14,
+      clienteId: 999,
+      vendedorId: 23,
+      repartoId: 12,
       condicionVenta: 'CONTADO',
-      reparto: 'REPARTO 1',
-      totalMonto: 15000.0,
-      fechaGeneracion: '31/07/2026',
+      total: 15000.0,
+      fecha: '31/07/2026',
       items: [
         {
-          'codigo': '101',
-          'descripcion': 'PRODUCTO OFFLINE 1',
+          'productoId': 101,
           'cantidad': 2,
           'precioUnitario': 7500.0,
           'descuento': 0.0,
-          'total': 15000.0,
+          'precioTotal': 15000.0,
         }
       ],
     );
@@ -102,7 +134,7 @@ void main() {
     expect(orderId, equals(1));
     final pending = await syncRepository.getPendingSyncOrders();
     expect(pending.length, equals(1));
-    expect(pending.first.order.cliente, equals('CLIENTE PRUEBA OFFLINE'));
+    expect(pending.first.order.clienteId, equals(999));
     expect(pending.first.order.syncStatus, equals('PENDING_SYNC'));
   });
 
@@ -110,18 +142,19 @@ void main() {
     // 1. Crear en modo offline
     connectivityNotifier.toggleManualSimulatedState();
     await syncNotifier.saveOrderOffline(
-      cliente: 'CLIENTE 2',
+      organizacionId: 14,
+      clienteId: 888,
+      vendedorId: 23,
+      repartoId: 12,
       condicionVenta: 'CONTADO',
-      reparto: 'REPARTO 2',
-      totalMonto: 20000.0,
-      fechaGeneracion: '31/07/2026',
+      total: 20000.0,
+      fecha: '31/07/2026',
       items: [],
     );
 
     expect((await syncRepository.getPendingSyncOrders()).length, equals(1));
 
     // 2. Simular retorno de conexión a Internet (Offline -> Online)
-    // El oyente en SyncNotifier dispara la sincronización automática
     connectivityNotifier.toggleManualSimulatedState();
     expect(connectivityNotifier.isConnected, isTrue);
 

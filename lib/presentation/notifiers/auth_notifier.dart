@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../domain/usecases/login_use_case.dart';
+import '../../domain/usecases/check_session_use_case.dart';
 import '../../domain/entities/user_entity.dart';
 
 class AuthNotifier extends ChangeNotifier {
   final LoginUseCase _loginUseCase;
+  final CheckSessionUseCase _checkSessionUseCase;
 
-  AuthNotifier(this._loginUseCase);
+  AuthNotifier(this._loginUseCase, this._checkSessionUseCase);
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -39,6 +41,24 @@ class AuthNotifier extends ChangeNotifier {
 
       notifyListeners();
       return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> checkSession() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _currentUser = await _checkSessionUseCase.execute();
+      _isLoading = false;
+      notifyListeners();
+      return _currentUser != null;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
