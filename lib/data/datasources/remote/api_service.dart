@@ -147,6 +147,29 @@ class ApiService {
     }
   }
 
+  Future<Response> getClientes({dynamic sisorgId}) async {
+    try {
+      final orgId = sisorgId ??
+          _sisorgId ??
+          _sisorgCodigo ??
+          getSisorgIdFromToken() ??
+          dotenv.maybeGet('SISORG_CODIGO');
+
+      if (orgId == null || orgId.toString().isEmpty) {
+        throw Exception(
+          'No se pudo determinar el SISORG_ID / SISORG_CODIGO. Inicie sesión nuevamente.',
+        );
+      }
+
+      return await _dio.get(
+        ApiEndpoints.clientes,
+        queryParameters: {'sisorg_id': orgId},
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al obtener clientes: ${e.message}');
+    }
+  }
+
   Future<Response> postFaltante(Map<String, dynamic> payload) async {
     try {
       return await _dio.post(
