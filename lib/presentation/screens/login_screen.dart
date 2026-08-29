@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _orgController = TextEditingController();
   final _userController = TextEditingController();
   final _passController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -51,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               TextFormField(
                 controller: _orgController,
+                textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(
                   labelText: 'Organización',
                   border: OutlineInputBorder(),
@@ -61,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _userController,
+                textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(
                   labelText: 'Usuario',
                   border: OutlineInputBorder(),
@@ -71,12 +74,23 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passController,
-                decoration: const InputDecoration(
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock, color: AppColors.primaryRed),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock, color: AppColors.primaryRed),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.textSecondary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                 ),
-                obscureText: true,
                 validator: (val) => val!.isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 24),
@@ -114,8 +128,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
 
     final success = await authNotifier.login(
-      _orgController.text,
-      _userController.text,
+      _orgController.text.trim().toUpperCase(),
+      _userController.text.trim().toUpperCase(),
       _passController.text,
     );
 

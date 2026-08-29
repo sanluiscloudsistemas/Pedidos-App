@@ -47,9 +47,14 @@ class AuthRepositoryImpl implements AuthRepository {
         await _secureStorage.saveUserData(
           usuario: finalUsuario,
           organizacion: organizacion,
+          sisorgId: response.sisorgId,
         );
 
         _apiService.setAuthToken(token);
+        _apiService.setOrganizationInfo(
+          sisorgId: response.sisorgId,
+          sisorgCodigo: response.sisorgCodigo,
+        );
 
         return UserEntity(
           token: token,
@@ -115,6 +120,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final userData = await _secureStorage.getUserData();
     String finalUsuario = userData?['usuario'] ?? 'Usuario';
     final organizacion = userData?['organizacion'] ?? '';
+    final sisorgId = userData?['sisorgId'];
     
     try {
       final decodedToken = JwtDecoder.decode(token);
@@ -124,6 +130,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {}
 
     _apiService.setAuthToken(token);
+    _apiService.setOrganizationInfo(sisorgId: sisorgId);
 
     return UserEntity(
       token: token,

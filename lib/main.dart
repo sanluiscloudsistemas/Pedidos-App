@@ -8,9 +8,11 @@ import 'data/datasources/remote/api_service.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/sync_repository_impl.dart';
 import 'domain/usecases/login_use_case.dart';
+import 'domain/usecases/check_session_use_case.dart';
 import 'presentation/notifiers/auth_notifier.dart';
 import 'presentation/notifiers/connectivity_notifier.dart';
 import 'presentation/notifiers/sync_notifier.dart';
+import 'presentation/screens/auth_wrapper.dart';
 import 'presentation/screens/login_screen.dart';
 
 Future<void> main() async {
@@ -27,12 +29,14 @@ Future<void> main() async {
   
   // 3. Casos de uso
   final loginUseCase = LoginUseCase(authRepository);
+  final checkSessionUseCase = CheckSessionUseCase(authRepository);
   
   runApp(
     MultiProvider(
       providers: [
+        Provider<ApiService>.value(value: apiService),
         Provider<AppDatabase>.value(value: appDatabase),
-        ChangeNotifierProvider(create: (_) => AuthNotifier(loginUseCase)),
+        ChangeNotifierProvider(create: (_) => AuthNotifier(loginUseCase, checkSessionUseCase)),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
         ChangeNotifierProxyProvider<ConnectivityNotifier, SyncNotifier>(
           create: (ctx) => SyncNotifier(
@@ -64,7 +68,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const AuthWrapper(),
     );
   }
 }

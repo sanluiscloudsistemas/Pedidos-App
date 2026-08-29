@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:preventa/domain/entities/user_entity.dart';
 import 'package:preventa/domain/repositories/auth_repository.dart';
 import 'package:preventa/domain/usecases/login_use_case.dart';
+import 'package:preventa/domain/usecases/check_session_use_case.dart';
 import 'package:preventa/presentation/notifiers/auth_notifier.dart';
 import 'package:preventa/presentation/screens/login_screen.dart';
 
@@ -42,7 +43,8 @@ void main() {
   testWidgets('Carga de pantalla de login smoke test', (WidgetTester tester) async {
     final fakeRepo = FakeAuthRepository();
     final loginUseCase = LoginUseCase(fakeRepo);
-    final authNotifier = AuthNotifier(loginUseCase);
+    final checkSessionUseCase = CheckSessionUseCase(fakeRepo);
+    final authNotifier = AuthNotifier(loginUseCase, checkSessionUseCase);
 
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthNotifier>.value(

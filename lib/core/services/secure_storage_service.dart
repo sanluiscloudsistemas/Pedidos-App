@@ -8,6 +8,7 @@ class SecureStorageService {
   static const String _keyToken = 'jwt_auth_token';
   static const String _keyUser = 'saved_user_name';
   static const String _keyOrg = 'saved_org_id';
+  static const String _keySisorgId = 'saved_sisorg_id';
   static const String _keyBiometricEnabled = 'biometric_enabled';
 
   bool get _isWindows =>
@@ -50,14 +51,21 @@ class SecureStorageService {
   Future<void> saveUserData({
     required String usuario,
     required String organizacion,
+    String? sisorgId,
   }) async {
     if (_isWindows) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUser, usuario);
       await prefs.setString(_keyOrg, organizacion);
+      if (sisorgId != null && sisorgId.isNotEmpty) {
+        await prefs.setString(_keySisorgId, sisorgId);
+      }
     } else {
       await _storage.write(key: _keyUser, value: usuario);
       await _storage.write(key: _keyOrg, value: organizacion);
+      if (sisorgId != null && sisorgId.isNotEmpty) {
+        await _storage.write(key: _keySisorgId, value: sisorgId);
+      }
     }
   }
 
@@ -67,15 +75,25 @@ class SecureStorageService {
       final prefs = await SharedPreferences.getInstance();
       final usuario = prefs.getString(_keyUser);
       final org = prefs.getString(_keyOrg);
+      final sisorgId = prefs.getString(_keySisorgId);
       if (usuario != null && org != null) {
-        return {'usuario': usuario, 'organizacion': org};
+        return {
+          'usuario': usuario,
+          'organizacion': org,
+          if (sisorgId != null) 'sisorgId': sisorgId,
+        };
       }
       return null;
     } else {
       final usuario = await _storage.read(key: _keyUser);
       final org = await _storage.read(key: _keyOrg);
+      final sisorgId = await _storage.read(key: _keySisorgId);
       if (usuario != null && org != null) {
-        return {'usuario': usuario, 'organizacion': org};
+        return {
+          'usuario': usuario,
+          'organizacion': org,
+          if (sisorgId != null) 'sisorgId': sisorgId,
+        };
       }
       return null;
     }
@@ -110,6 +128,7 @@ class SecureStorageService {
       await prefs.remove(_keyToken);
       await prefs.remove(_keyUser);
       await prefs.remove(_keyOrg);
+      await prefs.remove(_keySisorgId);
       await prefs.remove(_keyBiometricEnabled);
     } else {
       await _storage.deleteAll();
