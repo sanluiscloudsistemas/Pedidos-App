@@ -1,14 +1,13 @@
-import 'package:drift/drift.dart';
 import '../../domain/repositories/sync_repository.dart';
-import '../datasources/local/app_database.dart';
+import '../datasources/local/hive_service.dart';
 import '../datasources/remote/api_service.dart';
 
 class SyncRepositoryImpl implements SyncRepository {
-  final AppDatabase db;
+  final HiveService hiveService;
   final ApiService apiService;
 
   SyncRepositoryImpl({
-    required this.db,
+    required this.hiveService,
     required this.apiService,
   });
 
@@ -16,44 +15,29 @@ class SyncRepositoryImpl implements SyncRepository {
   Future<int> saveOrderOffline({
     required int organizacionId,
     required int clienteId,
+    String clienteNombre = '',
     required int vendedorId,
     required int repartoId,
+    String repartoNombre = '',
     required String condicionVenta,
     required double total,
     required String fecha,
+    String syncStatus = 'PENDING_SYNC',
     required List<Map<String, dynamic>> items,
   }) async {
-    return db.transaction(() async {
-      // 1. Insertar en PedidosLocal
-      final pedidoId = await db.into(db.pedidosLocal).insert(
-            PedidosLocalCompanion.insert(
-              organizacionId: organizacionId,
-              clienteId: clienteId,
-              vendedorId: vendedorId,
-              repartoId: repartoId,
-              condicionVenta: Value(condicionVenta),
-              total: total,
-              fecha: fecha,
-              syncStatus: const Value('PENDING_SYNC'),
-            ),
-          );
-
-      // 2. Insertar cada ítem asociado en OrderItemsLocal
-      for (final item in items) {
-        await db.into(db.orderItemsLocal).insert(
-              OrderItemsLocalCompanion.insert(
-                pedidoLocalId: pedidoId,
-                productoId: (item['productoId'] as num?)?.toInt() ?? 0,
-                cantidad: (item['cantidad'] as num?)?.toInt() ?? 1,
-                precioUnitario: (item['precioUnitario'] as num?)?.toDouble() ?? 0.0,
-                descuento: Value((item['descuento'] as num?)?.toDouble() ?? 0.0),
-                precioTotal: (item['precioTotal'] as num?)?.toDouble() ?? 0.0,
-              ),
-            );
-      }
-
-      return pedidoId;
-    });
+    return hiveService.saveOrder(
+      organizacionId: organizacionId,
+      clienteId: clienteId,
+      clienteNombre: clienteNombre,
+      vendedorId: vendedorId,
+      repartoId: repartoId,
+      repartoNombre: repartoNombre,
+      condicionVenta: condicionVenta,
+      total: total,
+      fecha: fecha,
+      syncStatus: syncStatus,
+      items: items,
+    );
   }
 
   @override
@@ -69,20 +53,17 @@ class SyncRepositoryImpl implements SyncRepository {
     String? emailPrincipal,
     String? geoposicion,
   }) async {
-    return await db.into(db.clientesLocal).insert(
-      ClientesLocalCompanion.insert(
-        organizacionId: organizacionId,
-        vendedorId: vendedorId,
-        nombre: nombre,
-        razonSocial: razonSocial,
-        tipoDocumento: tipoDocumento,
-        numeroDocumento: numeroDocumento,
-        tipoIva: tipoIva,
-        telefono: Value(telefono),
-        emailPrincipal: Value(emailPrincipal),
-        geoposicion: Value(geoposicion),
-        syncStatus: const Value('PENDING_SYNC'),
-      ),
+    return hiveService.saveCliente(
+      organizacionId: organizacionId,
+      vendedorId: vendedorId,
+      nombre: nombre,
+      razonSocial: razonSocial,
+      tipoDocumento: tipoDocumento,
+      numeroDocumento: numeroDocumento,
+      tipoIva: tipoIva,
+      telefono: telefono,
+      emailPrincipal: emailPrincipal,
+      geoposicion: geoposicion,
     );
   }
 
@@ -94,62 +75,28 @@ class SyncRepositoryImpl implements SyncRepository {
     required String fecha,
     String? observacion,
   }) async {
-    return await db.into(db.faltantesLocal).insert(
-      FaltantesLocalCompanion.insert(
-        organizacionId: organizacionId,
-        vendedorId: vendedorId,
-        productoId: productoId,
-        fecha: fecha,
-        observacion: Value(observacion),
-        syncStatus: const Value('PENDING_SYNC'),
-      ),
+    return hiveService.saveFaltante(
+      organizacionId: organizacionId,
+      vendedorId: vendedorId,
+      productoId: productoId,
+      fecha: fecha,
+      observacion: observacion,
     );
   }
 
   @override
   Future<List<FullLocalOrder>> getAllLocalOrders() async {
-    final orders = await db.select(db.pedidosLocal).get();
-    final result = <FullLocalOrder>[];
-
-    for (final order in orders) {
-      final items = await (db.select(db.orderItemsLocal)
-            ..where((tbl) => tbl.pedidoLocalId.equals(order.id)))
-          .get();
-      result.add(FullLocalOrder(order: order, items: items));
-    }
-
-    return result;
+    return hiveService.getAllOrders();
   }
 
   @override
   Stream<List<FullLocalOrder>> watchAllLocalOrders() {
-    return db.select(db.pedidosLocal).watch().asyncMap((orders) async {
-      final result = <FullLocalOrder>[];
-      for (final order in orders) {
-        final items = await (db.select(db.orderItemsLocal)
-              ..where((tbl) => tbl.pedidoLocalId.equals(order.id)))
-            .get();
-        result.add(FullLocalOrder(order: order, items: items));
-      }
-      return result;
-    });
+    return hiveService.ordersStream;
   }
 
   @override
   Future<List<FullLocalOrder>> getPendingSyncOrders() async {
-    final pendingOrders = await (db.select(db.pedidosLocal)
-          ..where((tbl) => tbl.syncStatus.equals('PENDING_SYNC')))
-        .get();
-
-    final result = <FullLocalOrder>[];
-    for (final order in pendingOrders) {
-      final items = await (db.select(db.orderItemsLocal)
-            ..where((tbl) => tbl.pedidoLocalId.equals(order.id)))
-          .get();
-      result.add(FullLocalOrder(order: order, items: items));
-    }
-
-    return result;
+    return hiveService.getPendingOrders();
   }
 
   @override
@@ -160,14 +107,21 @@ class SyncRepositoryImpl implements SyncRepository {
     final pendingOrdersList = await getPendingSyncOrders();
     for (final fullOrder in pendingOrdersList) {
       try {
+        final depId = int.tryParse(apiService.sisdepId ?? '') ??
+            int.tryParse(apiService.sisperId ?? '') ??
+            fullOrder.order.vendedorId;
+        final depositoId = int.tryParse(apiService.depositoId ?? '') ?? depId;
+
         final payload = {
           'pedido': {
             'organizacion_id': fullOrder.order.organizacionId,
             'cliente_id': fullOrder.order.clienteId,
             'vendedor_id': fullOrder.order.vendedorId,
+            'dependencia_id': depId,
+            'deposito_id': depositoId,
             'reparto_id': fullOrder.order.repartoId,
             'fecha': fullOrder.order.fecha,
-            'condicionventa': fullOrder.order.condicionVenta,
+            'condicionventa': _mapCondicionVenta(fullOrder.order.condicionVenta),
             'total': fullOrder.order.total,
           },
           'items': fullOrder.items.map((it) => {
@@ -181,108 +135,92 @@ class SyncRepositoryImpl implements SyncRepository {
 
         await apiService.postPedido(payload);
 
-        await (db.update(db.pedidosLocal)
-              ..where((tbl) => tbl.id.equals(fullOrder.order.id)))
-            .write(
-          const PedidosLocalCompanion(
-            syncStatus: Value('SYNCED'),
-            syncErrorMessage: Value(null),
-          ),
+        await hiveService.updateOrderStatus(
+          fullOrder.order.id,
+          'SYNCED',
         );
         syncedCount++;
       } catch (e) {
-        await (db.update(db.pedidosLocal)
-              ..where((tbl) => tbl.id.equals(fullOrder.order.id)))
-            .write(
-          PedidosLocalCompanion(
-            syncStatus: const Value('SYNC_ERROR'),
-            syncErrorMessage: Value(e.toString()),
-          ),
+        await hiveService.updateOrderStatus(
+          fullOrder.order.id,
+          'SYNC_ERROR',
+          errorMessage: e.toString(),
         );
       }
     }
 
     // 2. Sincronizar Clientes
-    final pendingClientes = await (db.select(db.clientesLocal)
-          ..where((tbl) => tbl.syncStatus.equals('PENDING_SYNC')))
-        .get();
-
+    final pendingClientes = hiveService.getPendingClientes();
     for (final cliente in pendingClientes) {
       try {
         final payload = {
-          'organizacion_id': cliente.organizacionId,
-          'vendedor_id': cliente.vendedorId,
-          'nombre': cliente.nombre,
-          'razon_social': cliente.razonSocial,
-          'tipo_documento': cliente.tipoDocumento,
-          'numero_documento': cliente.numeroDocumento,
-          'tipo_iva': cliente.tipoIva,
-          'telefono': cliente.telefono ?? '',
-          'email_principal': cliente.emailPrincipal ?? '',
-          'geoposicion': cliente.geoposicion ?? '',
+          'organizacion_id': cliente['organizacionId'],
+          'vendedor_id': cliente['vendedorId'],
+          'nombre': cliente['nombre'],
+          'razon_social': cliente['razonSocial'],
+          'tipo_documento': cliente['tipoDocumento'],
+          'numero_documento': cliente['numeroDocumento'],
+          'tipo_iva': cliente['tipoIva'],
+          'telefono': cliente['telefono'] ?? '',
+          'email_principal': cliente['emailPrincipal'] ?? '',
+          'geoposicion': cliente['geoposicion'] ?? '',
         };
 
         await apiService.postCliente(payload);
 
-        await (db.update(db.clientesLocal)
-              ..where((tbl) => tbl.id.equals(cliente.id)))
-            .write(
-          const ClientesLocalCompanion(
-            syncStatus: Value('SYNCED'),
-            syncErrorMessage: Value(null),
-          ),
+        await hiveService.updateClienteStatus(
+          cliente['id'] as int,
+          'SYNCED',
         );
         syncedCount++;
       } catch (e) {
-        await (db.update(db.clientesLocal)
-              ..where((tbl) => tbl.id.equals(cliente.id)))
-            .write(
-          ClientesLocalCompanion(
-            syncStatus: const Value('SYNC_ERROR'),
-            syncErrorMessage: Value(e.toString()),
-          ),
+        await hiveService.updateClienteStatus(
+          cliente['id'] as int,
+          'SYNC_ERROR',
+          errorMessage: e.toString(),
         );
       }
     }
 
     // 3. Sincronizar Faltantes
-    final pendingFaltantes = await (db.select(db.faltantesLocal)
-          ..where((tbl) => tbl.syncStatus.equals('PENDING_SYNC')))
-        .get();
-
+    final pendingFaltantes = hiveService.getPendingFaltantes();
     for (final faltante in pendingFaltantes) {
       try {
         final payload = {
-          'organizacion_id': faltante.organizacionId,
-          'vendedor_id': faltante.vendedorId,
-          'producto_id': faltante.productoId,
-          'fecha': faltante.fecha,
-          'observacion': faltante.observacion ?? '',
+          'organizacion_id': faltante['organizacionId'],
+          'vendedor_id': faltante['vendedorId'],
+          'producto_id': faltante['productoId'],
+          'fecha': faltante['fecha'],
+          'observacion': faltante['observacion'] ?? '',
         };
 
         await apiService.postFaltante(payload);
 
-        await (db.update(db.faltantesLocal)
-              ..where((tbl) => tbl.id.equals(faltante.id)))
-            .write(
-          const FaltantesLocalCompanion(
-            syncStatus: Value('SYNCED'),
-            syncErrorMessage: Value(null),
-          ),
+        await hiveService.updateFaltanteStatus(
+          faltante['id'] as int,
+          'SYNCED',
         );
         syncedCount++;
       } catch (e) {
-        await (db.update(db.faltantesLocal)
-              ..where((tbl) => tbl.id.equals(faltante.id)))
-            .write(
-          FaltantesLocalCompanion(
-            syncStatus: const Value('SYNC_ERROR'),
-            syncErrorMessage: Value(e.toString()),
-          ),
+        await hiveService.updateFaltanteStatus(
+          faltante['id'] as int,
+          'SYNC_ERROR',
+          errorMessage: e.toString(),
         );
       }
     }
 
     return syncedCount;
+  }
+
+  String _mapCondicionVenta(String condicion) {
+    final upper = condicion.toUpperCase().trim();
+    if (upper.contains('CONT') || upper == 'CNT') {
+      return 'CNT';
+    }
+    if (upper.contains('CTA') || upper.contains('CTE') || upper == 'CC') {
+      return 'CC';
+    }
+    return upper.isNotEmpty ? upper : 'CNT';
   }
 }

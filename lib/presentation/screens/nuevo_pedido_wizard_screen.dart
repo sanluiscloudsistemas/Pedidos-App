@@ -28,6 +28,46 @@ class OrderItemDraft {
   });
 }
 
+/// Modelo para una opción de Reparto obtenida de la API
+class RepartoOption {
+  final int id;
+  final String codigo;
+  final String nombre;
+  final String descripcion;
+  final String zona;
+  final String estado;
+
+  const RepartoOption({
+    required this.id,
+    required this.codigo,
+    required this.nombre,
+    required this.descripcion,
+    required this.zona,
+    required this.estado,
+  });
+
+  factory RepartoOption.fromJson(Map<String, dynamic> json) {
+    return RepartoOption(
+      id: json['id'] is int ? json['id'] as int : (int.tryParse(json['id']?.toString() ?? '') ?? 0),
+      codigo: json['codigo']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? '',
+      descripcion: json['descripcion']?.toString() ?? '',
+      zona: json['zona']?.toString() ?? '',
+      estado: json['estado']?.toString() ?? '',
+    );
+  }
+
+  String get label {
+    if (nombre.isNotEmpty) {
+      return '$nombre (ID: $id)';
+    }
+    if (descripcion.isNotEmpty) {
+      return '$descripcion (ID: $id)';
+    }
+    return 'REPARTO $codigo (ID: $id)';
+  }
+}
+
 /// Wizard de Creación de Pedidos (`Nuevo Pedido`)
 class NuevoPedidoWizardScreen extends StatefulWidget {
   final String? clienteInicial;
@@ -67,15 +107,44 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
 
   // Paso 3 State
   String? _selectedReparto;
-  final List<String> _repartosDisponibles = ['REPARTO CENTRO - ZONA 1 (ID: 12)', 'REPARTO NORTE - ZONA 2 (ID: 13)'];
+  List<RepartoOption> _repartosModelList = [];
+  final List<String> _repartosDisponibles = [];
+  bool _isLoadingRepartos = true;
+
+  int _extraerRepartoId(String? repartoStr) {
+    if (repartoStr == null || repartoStr.isEmpty) return 96461;
+    final found = _repartosModelList.where((r) => r.label == repartoStr).firstOrNull;
+    if (found != null && found.id > 0) return found.id;
+
+    final match = RegExp(r'ID:\s*(\d+)').firstMatch(repartoStr);
+    if (match != null) {
+      return int.tryParse(match.group(1)!) ?? 96461;
+    }
+    final numMatch = RegExp(r'\d+').firstMatch(repartoStr);
+    if (numMatch != null) {
+      return int.tryParse(numMatch.group(0)!) ?? 96461;
+    }
+    return 96461;
+  }
+
+  String _mapCondicionVenta(String condicion) {
+    final upper = condicion.toUpperCase().trim();
+    if (upper.contains('CONT') || upper == 'CNT') {
+      return 'CNT';
+    }
+    if (upper.contains('CTA') || upper.contains('CTE') || upper == 'CC') {
+      return 'CC';
+    }
+    return upper.isNotEmpty ? upper : 'CNT';
+  }
 
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedReparto = _repartosDisponibles.first;
     _cargarClientes();
+    _cargarRepartos();
   }
 
   @override
@@ -129,6 +198,52 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       }
     } catch (_) {
       setState(() => _isLoadingClientes = false);
+    }
+  }
+
+  Future<void> _cargarRepartos() async {
+    try {
+      final apiService = context.read<ApiService>();
+      final response = await apiService.getRepartos(limit: 100);
+
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['items'] is List) {
+        final List itemsJson = data['items'];
+        final repartos = itemsJson
+            .map((item) => RepartoOption.fromJson(item as Map<String, dynamic>))
+            .toList();
+
+        setState(() {
+          _repartosModelList = repartos;
+          _repartosDisponibles.clear();
+          for (final r in repartos) {
+            final label = r.label;
+            if (label.isNotEmpty && !_repartosDisponibles.contains(label)) {
+              _repartosDisponibles.add(label);
+            }
+          }
+          if (_repartosDisponibles.isNotEmpty) {
+            _selectedReparto = _repartosDisponibles.first;
+          }
+          _isLoadingRepartos = false;
+        });
+      } else {
+        setState(() {
+          if (_repartosDisponibles.isEmpty) {
+            _repartosDisponibles.add('REPARTO GENERAL (ID: 96461)');
+            _selectedReparto = _repartosDisponibles.first;
+          }
+          _isLoadingRepartos = false;
+        });
+      }
+    } catch (_) {
+      setState(() {
+        if (_repartosDisponibles.isEmpty) {
+          _repartosDisponibles.add('REPARTO GENERAL (ID: 96461)');
+          _selectedReparto = _repartosDisponibles.first;
+        }
+        _isLoadingRepartos = false;
+      });
     }
   }
 
@@ -306,24 +421,25 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       final isOnline = Provider.of<ConnectivityNotifier>(context, listen: false).isConnected;
 
       final now = DateTime.now();
-      final fechaStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+      final fechaStr =
+          "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
       final orgId = int.tryParse(apiService.sisorgId ?? '') ?? 14;
-      final sisperId = int.tryParse(apiService.sisperId ?? '') ?? 23;
+      final sisperId = int.tryParse(apiService.sisperId ?? '') ?? 19565;
+      final depId = int.tryParse(apiService.sisdepId ?? '') ?? sisperId;
+      final depositoId = int.tryParse(apiService.depositoId ?? '') ?? depId;
 
-      int clienteId = 34;
+      int clienteId = 19568;
       if (_selectedCliente != null && _clientesModelList.isNotEmpty) {
         final found = _clientesModelList.firstWhere(
           (c) => '${c.codigo} - ${c.nombre}' == _selectedCliente || c.nombre == _selectedCliente,
           orElse: () => _clientesModelList.first,
         );
-        clienteId = found.clienteId ?? int.tryParse(found.codigo) ?? 34;
+        clienteId = found.clienteId ?? int.tryParse(found.codigo) ?? 19568;
       }
 
-      int repartoId = 12;
-      if (_selectedReparto != null && _selectedReparto!.contains('13')) {
-        repartoId = 13;
-      }
+      final repartoId = _extraerRepartoId(_selectedReparto);
+      final condicionCode = _mapCondicionVenta(_selectedCondicionVenta);
 
       final itemsPayload = _items.map((it) {
         return {
@@ -340,34 +456,60 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           'organizacion_id': orgId,
           'cliente_id': clienteId,
           'vendedor_id': sisperId,
+          'dependencia_id': depId,
+          'deposito_id': depositoId,
           'reparto_id': repartoId,
           'fecha': fechaStr,
-          'condicionventa': _selectedCondicionVenta,
+          'condicionventa': condicionCode,
           'total': _totalMonto,
         },
         'items': itemsPayload,
       };
 
+      final clientName = _selectedCliente ?? 'Cliente $clienteId';
+      final repName = _selectedReparto ?? (repartoId > 0 ? 'Reparto $repartoId' : '');
+
+      final itemsMapList = _items
+          .map((it) => {
+                'productoId': int.tryParse(it.codigo) ?? 0,
+                'producto_codigo': it.codigo,
+                'descripcion': it.descripcion,
+                'cantidad': it.cantidad,
+                'precioUnitario': it.precioUnitario,
+                'descuento': it.descuento,
+                'precioTotal': it.total,
+              })
+          .toList();
+
       if (isOnline) {
         await apiService.postPedido(payload);
+        // Guardar copia local con estado SYNCED para que los ítems queden asociados a la cabecera
+        await syncNotifier.saveOrderOffline(
+          organizacionId: orgId,
+          clienteId: clienteId,
+          clienteNombre: clientName,
+          vendedorId: sisperId,
+          repartoId: repartoId,
+          repartoNombre: repName,
+          condicionVenta: condicionCode,
+          total: _totalMonto,
+          fecha: fechaStr,
+          syncStatus: 'SYNCED',
+          items: itemsMapList,
+        );
       } else {
         await syncNotifier.saveOrderOffline(
           organizacionId: orgId,
           clienteId: clienteId,
+          clienteNombre: clientName,
           vendedorId: sisperId,
           repartoId: repartoId,
-          condicionVenta: _selectedCondicionVenta,
+          repartoNombre: repName,
+          condicionVenta: condicionCode,
           total: _totalMonto,
           fecha: fechaStr,
-          items: _items
-              .map((it) => {
-                    'productoId': int.tryParse(it.codigo) ?? 123,
-                    'cantidad': it.cantidad,
-                    'precioUnitario': it.precioUnitario,
-                    'descuento': it.descuento,
-                    'precioTotal': it.total,
-                  })
-              .toList(),
+          syncStatus: 'PENDING_SYNC',
+          items: itemsMapList,
         );
       }
 
@@ -490,7 +632,9 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           label: 'Condición de Venta',
           value: _selectedCondicionVenta,
           items: _condicionesVenta,
-          onChanged: (val) => setState(() => _selectedCondicionVenta = val!),
+          onChanged: (val) {
+            if (val != null) setState(() => _selectedCondicionVenta = val);
+          },
         ),
       ],
     );
@@ -863,13 +1007,17 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF757575))),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: items.isEmpty ? null : value,
+              value: (items.contains(value)) ? value : null,
+              hint: Text(
+                _isLoadingRepartos ? 'Cargando repartos...' : 'Seleccione una opción',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
               isExpanded: true,
               style: const TextStyle(fontSize: 14, color: Color(0xFF212121), fontWeight: FontWeight.w500),
               items: items.isEmpty
-                  ? [const DropdownMenuItem<String>(value: null, child: Text('No hay datos'))]
+                  ? null
                   : items.map((it) {
-                      return DropdownMenuItem(value: it, child: Text(it));
+                      return DropdownMenuItem<String>(value: it, child: Text(it));
                     }).toList(),
               onChanged: items.isEmpty ? null : onChanged,
             ),

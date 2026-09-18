@@ -18,13 +18,16 @@ class ApiService {
   String? _sisorgCodigo;
   String? _sisperId;
   String? _sisdepId;
+  String? _depositoId;
 
   String? get currentAuthToken => _authToken;
   String? get currentSisorgId => _sisorgId;
   String? get currentSisorgCodigo => _sisorgCodigo;
-  String? get sisorgId => _sisorgId ?? _sisorgCodigo ?? getSisorgIdFromToken() ?? dotenv.maybeGet('SISORG_CODIGO');
-  String? get sisperId => _sisperId;
-  String? get sisdepId => _sisdepId;
+  String? get currentDepositoId => _depositoId;
+  String? get sisorgId => _sisorgId ?? _sisorgCodigo ?? getSisorgIdFromToken() ?? dotenv.maybeGet('SISORG_CODIGO') ?? '14';
+  String? get sisperId => _sisperId ?? getSisperIdFromToken() ?? dotenv.maybeGet('SISPER_ID') ?? '19565';
+  String? get sisdepId => _sisdepId ?? getSisdepIdFromToken() ?? dotenv.maybeGet('SISDEP_ID') ?? sisperId;
+  String? get depositoId => _depositoId ?? getDepositoIdFromToken() ?? sisdepId ?? dotenv.maybeGet('DEPOSITO_ID');
 
   /// Asigna el token JWT en las cabeceras de todas las solicitudes de Dio.
   void setAuthToken(String? token) {
@@ -36,12 +39,13 @@ class ApiService {
     }
   }
 
-  /// Establece explícitamente el sisorg_id, sisorg_codigo, sisper_id o sisdep_id.
+  /// Establece explícitamente el sisorg_id, sisorg_codigo, sisper_id, sisdep_id o deposito_id.
   void setOrganizationInfo({
     String? sisorgId,
     String? sisorgCodigo,
     String? sisperId,
     String? sisdepId,
+    String? depositoId,
   }) {
     if (sisorgId != null && sisorgId.isNotEmpty) {
       _sisorgId = sisorgId;
@@ -54,6 +58,9 @@ class ApiService {
     }
     if (sisdepId != null && sisdepId.isNotEmpty) {
       _sisdepId = sisdepId;
+    }
+    if (depositoId != null && depositoId.isNotEmpty) {
+      _depositoId = depositoId;
     }
   }
 
@@ -73,6 +80,74 @@ class ApiService {
             payload['SISORG_CODIGO'] ??
             payload['organizacion_id'] ??
             payload['organizacion'];
+        if (val != null && val.toString().isNotEmpty) {
+          return val.toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Extrae el SISPER_ID o vendedor_id desde los claims del payload del token JWT.
+  String? getSisperIdFromToken() {
+    if (_authToken == null || _authToken!.isEmpty) return null;
+    try {
+      final parts = _authToken!.split('.');
+      if (parts.length != 3) return null;
+      final normalized = base64.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      final payload = jsonDecode(payloadString);
+      if (payload is Map<String, dynamic>) {
+        final val = payload['sisper_id'] ??
+            payload['SISPER_ID'] ??
+            payload['vendedor_id'] ??
+            payload['usuario_id'] ??
+            payload['sisper'];
+        if (val != null && val.toString().isNotEmpty) {
+          return val.toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Extrae el SISDEP_ID o dependencia_id desde los claims del payload del token JWT.
+  String? getSisdepIdFromToken() {
+    if (_authToken == null || _authToken!.isEmpty) return null;
+    try {
+      final parts = _authToken!.split('.');
+      if (parts.length != 3) return null;
+      final normalized = base64.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      final payload = jsonDecode(payloadString);
+      if (payload is Map<String, dynamic>) {
+        final val = payload['sisdep_id'] ??
+            payload['SISDEP_ID'] ??
+            payload['dependencia_id'] ??
+            payload['sisdep'];
+        if (val != null && val.toString().isNotEmpty) {
+          return val.toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Extrae el DEPOSITO_ID desde los claims del payload del token JWT.
+  String? getDepositoIdFromToken() {
+    if (_authToken == null || _authToken!.isEmpty) return null;
+    try {
+      final parts = _authToken!.split('.');
+      if (parts.length != 3) return null;
+      final normalized = base64.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      final payload = jsonDecode(payloadString);
+      if (payload is Map<String, dynamic>) {
+        final val = payload['deposito_id'] ??
+            payload['DEPOSITO_ID'] ??
+            payload['comdep_id'] ??
+            payload['comdep_id_ori'] ??
+            payload['sisdep_id'];
         if (val != null && val.toString().isNotEmpty) {
           return val.toString();
         }
@@ -123,6 +198,11 @@ class ApiService {
       if (authResponse.sisdepId != null) {
         _sisdepId = authResponse.sisdepId;
       }
+      if (authResponse.depositoId != null) {
+        _depositoId = authResponse.depositoId;
+      } else if (authResponse.sisdepId != null) {
+        _depositoId = authResponse.sisdepId;
+      }
 
       return authResponse;
     } on DioException catch (e) {
@@ -149,28 +229,9 @@ class ApiService {
 
   Future<Response> postPedido(Map<String, dynamic> payload) async {
     try {
-      final orgId = _sisorgId ??
-          _sisorgCodigo ??
-          getSisorgIdFromToken() ??
-          dotenv.maybeGet('SISORG_CODIGO');
-      final sisperId = _sisperId;
-
-      final headers = <String, dynamic>{};
-      if (orgId != null && orgId.toString().isNotEmpty) {
-        headers['sisorg_id'] = orgId;
-      }
-      if (sisperId != null && sisperId.toString().isNotEmpty) {
-        headers['sisper_id'] = sisperId;
-      }
-
       return await _dio.post(
         ApiEndpoints.pedidos,
         data: payload,
-        options: Options(headers: headers),
-        queryParameters: {
-          if (orgId != null) 'sisorg_id': orgId,
-          if (sisperId != null) 'sisper_id': sisperId,
-        },
       );
     } on DioException catch (e) {
       if (e.response != null && e.response?.data != null) {
@@ -297,6 +358,32 @@ class ApiService {
       );
     } on DioException catch (e) {
       throw Exception('Error al obtener catálogo: ${e.message}');
+    }
+  }
+
+  Future<Response> getRepartos({
+    dynamic sisorgId,
+    int offset = 0,
+    int limit = 100,
+  }) async {
+    try {
+      final orgId = sisorgId ??
+          _sisorgId ??
+          _sisorgCodigo ??
+          getSisorgIdFromToken() ??
+          dotenv.maybeGet('SISORG_CODIGO') ??
+          '14';
+
+      return await _dio.get(
+        ApiEndpoints.repartos,
+        queryParameters: {
+          'sisorg_id': orgId,
+          'offset': offset,
+          'limit': limit,
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al obtener repartos: ${e.message}');
     }
   }
 }

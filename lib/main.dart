@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
 // Importaciones de la arquitectura de la app
-import 'data/datasources/local/app_database.dart';
+import 'data/datasources/local/hive_service.dart';
 import 'data/datasources/remote/api_service.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/sync_repository_impl.dart';
@@ -16,15 +17,20 @@ import 'presentation/screens/auth_wrapper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicialización de persistencia local en Hive (100% puro Dart)
+  await Hive.initFlutter();
+  final hiveService = HiveService();
+  await hiveService.init();
+
   await dotenv.load(fileName: ".env");
   
   // 1. Fuentes de datos
   final apiService = ApiService();
-  final appDatabase = AppDatabase();
   
   // 2. Repositorios
   final authRepository = AuthRepositoryImpl(apiService: apiService);
-  final syncRepository = SyncRepositoryImpl(db: appDatabase, apiService: apiService);
+  final syncRepository = SyncRepositoryImpl(hiveService: hiveService, apiService: apiService);
   
   // 3. Casos de uso
   final loginUseCase = LoginUseCase(authRepository);
@@ -34,7 +40,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<ApiService>.value(value: apiService),
-        Provider<AppDatabase>.value(value: appDatabase),
+        Provider<HiveService>.value(value: hiveService),
         ChangeNotifierProvider(create: (_) => AuthNotifier(loginUseCase, checkSessionUseCase)),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
         ChangeNotifierProxyProvider<ConnectivityNotifier, SyncNotifier>(

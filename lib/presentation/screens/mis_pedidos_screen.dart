@@ -10,22 +10,155 @@ import '../widgets/common/list_header_summary.dart';
 import '../widgets/common/preventa_app_bar.dart';
 import '../widgets/common/preventa_drawer.dart';
 import '../widgets/common/search_filter_bar.dart';
+import 'pedido_detail_screen.dart';
+
+/// Modelo para un ítem dentro de un pedido
+class PedidoDetalleItem {
+  final String codigo;
+  final String descripcion;
+  final int cantidad;
+  final double precioUnitario;
+  final double descuento;
+  final double precioTotal;
+
+  const PedidoDetalleItem({
+    required this.codigo,
+    this.descripcion = '',
+    required this.cantidad,
+    required this.precioUnitario,
+    this.descuento = 0.0,
+    required this.precioTotal,
+  });
+
+  factory PedidoDetalleItem.fromJson(Map<String, dynamic> json) {
+    double parseNum(dynamic val) {
+      if (val == null) return 0.0;
+      if (val is num) return val.toDouble();
+      return double.tryParse(val.toString().replaceAll('\$', '').replaceAll(' ', '').replaceAll(',', '.').trim()) ?? 0.0;
+    }
+
+    final cantRaw = json['cantidad'] ?? json['CANTIDAD'] ?? json['cant'] ?? json['CANT'];
+    final cant = cantRaw is int
+        ? cantRaw
+        : (int.tryParse(cantRaw?.toString() ?? '') ?? 1);
+
+    final unit = parseNum(
+      json['precio_unitario'] ??
+      json['PRECIO_UNITARIO'] ??
+      json['monto_unitario'] ??
+      json['MONTO_UNITARIO'] ??
+      json['precio'] ??
+      json['PRECIO']
+    );
+
+    final desc = parseNum(json['descuento'] ?? json['DESCUENTO']);
+
+    final totalRaw = json['precio_total'] ??
+        json['PRECIO_TOTAL'] ??
+        json['monto_total'] ??
+        json['MONTO_TOTAL'] ??
+        json['total'] ??
+        json['TOTAL'];
+    final total = parseNum(totalRaw) > 0 ? parseNum(totalRaw) : (cant * unit) - desc;
+
+    final codigoStr = json['producto_codigo']?.toString() ??
+        json['PRODUCTO_CODIGO']?.toString() ??
+        json['propro_codigo']?.toString() ??
+        json['PROPRO_CODIGO']?.toString() ??
+        json['producto_id']?.toString() ??
+        json['PRODUCTO_ID']?.toString() ??
+        json['propro_id']?.toString() ??
+        json['PROPRO_ID']?.toString() ??
+        json['codigo']?.toString() ??
+        json['CODIGO']?.toString() ??
+        json['id']?.toString() ??
+        json['ID']?.toString() ??
+        '';
+
+    final descStr = json['descripcion']?.toString() ??
+        json['DESCRIPCION']?.toString() ??
+        json['producto_descripcion']?.toString() ??
+        json['PRODUCTO_DESCRIPCION']?.toString() ??
+        json['producto']?.toString() ??
+        json['PRODUCTO']?.toString() ??
+        json['nombre']?.toString() ??
+        json['NOMBRE']?.toString() ??
+        (codigoStr.isNotEmpty ? 'Producto #$codigoStr' : '');
+
+    return PedidoDetalleItem(
+      codigo: codigoStr,
+      descripcion: descStr,
+      cantidad: cant,
+      precioUnitario: unit,
+      descuento: desc,
+      precioTotal: total,
+    );
+  }
+}
 
 /// Modelo de datos para un Pedido en la vista de lista
 class PedidoItemModel {
   final String fechaGeneracion;
+  final String fechaEntrega;
+  final String estadoFecha;
+  final String? estadoColor;
+  final String? id;
   final String codigo;
   final String cliente;
   final double monto;
   final String estado;
+  final String condicionVenta;
+  final String reparto;
+  final List<PedidoDetalleItem> items;
+  final bool isOffline;
 
   const PedidoItemModel({
     required this.fechaGeneracion,
+    this.fechaEntrega = '',
+    this.estadoFecha = '',
+    this.estadoColor,
+    this.id,
     required this.codigo,
     required this.cliente,
     required this.monto,
     required this.estado,
+    this.condicionVenta = 'CONTADO',
+    this.reparto = '',
+    this.items = const [],
+    this.isOffline = false,
   });
+
+  PedidoItemModel copyWith({
+    String? fechaGeneracion,
+    String? fechaEntrega,
+    String? estadoFecha,
+    String? estadoColor,
+    String? id,
+    String? codigo,
+    String? cliente,
+    double? monto,
+    String? estado,
+    String? condicionVenta,
+    String? reparto,
+    List<PedidoDetalleItem>? items,
+    bool? isOffline,
+  }) {
+    return PedidoItemModel(
+      fechaGeneracion: fechaGeneracion ?? this.fechaGeneracion,
+      fechaEntrega: fechaEntrega ?? this.fechaEntrega,
+      estadoFecha: estadoFecha ?? this.estadoFecha,
+      estadoColor: estadoColor ?? this.estadoColor,
+      id: id ?? this.id,
+      codigo: codigo ?? this.codigo,
+      cliente: cliente ?? this.cliente,
+      monto: monto ?? this.monto,
+      estado: estado ?? this.estado,
+      condicionVenta: condicionVenta ?? this.condicionVenta,
+      reparto: reparto ?? this.reparto,
+      items: items ?? this.items,
+      isOffline: isOffline ?? this.isOffline,
+    );
+  }
 
   factory PedidoItemModel.fromJson(Map<String, dynamic> json) {
     double parseMonto(dynamic val) {
@@ -38,19 +171,106 @@ class PedidoItemModel {
       return 0.0;
     }
 
+    final List<PedidoDetalleItem> parsedItems = [];
+    final rawItems = json['items'] ??
+        json['ITEMS'] ??
+        json['detalles'] ??
+        json['DETALLES'] ??
+        json['lineas'] ??
+        json['LINEAS'] ??
+        json['productos'] ??
+        json['PRODUCTOS'] ??
+        json['detalle'] ??
+        json['DETALLE'];
+
+    if (rawItems is List) {
+      for (final it in rawItems) {
+        if (it is Map<String, dynamic>) {
+          parsedItems.add(PedidoDetalleItem.fromJson(it));
+        } else if (it is Map) {
+          parsedItems.add(PedidoDetalleItem.fromJson(Map<String, dynamic>.from(it)));
+        }
+      }
+    }
+
+    final fechaGen = json['fecha_generacion']?.toString().trim() ??
+        json['FECHA_GENERACION']?.toString().trim() ??
+        json['fecha']?.toString().trim() ??
+        json['FECHA']?.toString().trim() ??
+        json['fecha_creacion']?.toString().trim() ??
+        json['FECHA_CREACION']?.toString().trim() ??
+        '';
+
+    final fechaEnt = json['fecha_entrega']?.toString().trim() ??
+        json['FECHA_ENTREGA']?.toString().trim() ??
+        '';
+
+    final estadoFec = json['estado_fecha']?.toString().trim() ??
+        json['ESTADO_FECHA']?.toString().trim() ??
+        '';
+
+    final estadoCol = json['estado_color']?.toString().trim() ??
+        json['ESTADO_COLOR']?.toString().trim();
+
+    final idVal = json['id']?.toString().trim() ??
+        json['ID']?.toString().trim() ??
+        json['pedido_id']?.toString().trim() ??
+        json['PEDIDO_ID']?.toString().trim() ??
+        json['comcom_id']?.toString().trim() ??
+        json['COMCOM_ID']?.toString().trim();
+
+    final codigoVal = json['codigo']?.toString().trim() ??
+        json['CODIGO']?.toString().trim() ??
+        (idVal != null && idVal.isNotEmpty ? idVal : '');
+
+    final clienteNombre = json['cliente']?.toString().trim() ??
+        json['CLIENTE']?.toString().trim() ??
+        json['cliente_nombre']?.toString().trim() ??
+        json['CLIENTE_NOMBRE']?.toString().trim() ??
+        (json['cliente_id'] != null
+            ? 'Cliente ID: ${json['cliente_id']}'
+            : (json['CLIENTE_ID'] != null ? 'Cliente ID: ${json['CLIENTE_ID']}' : 'Sin cliente'));
+
+    final montoVal = parseMonto(
+      json['monto'] ??
+      json['MONTO'] ??
+      json['total'] ??
+      json['TOTAL']
+    );
+
+    final estadoVal = json['estado']?.toString().trim() ??
+        json['ESTADO']?.toString().trim() ??
+        'NUEVO';
+
+    final condVenta = json['condicion_venta']?.toString().trim() ??
+        json['CONDICION_VENTA']?.toString().trim() ??
+        json['condicionventa']?.toString().trim() ??
+        json['CONDICIONVENTA']?.toString().trim() ??
+        'CONTADO';
+
+    final repartoVal = json['reparto']?.toString().trim() ??
+        json['REPARTO']?.toString().trim() ??
+        (json['sisrep_id'] != null
+            ? 'Reparto ID: ${json['sisrep_id']}'
+            : (json['SISREP_ID'] != null
+                ? 'Reparto ID: ${json['SISREP_ID']}'
+                : (json['reparto_id'] != null
+                    ? 'Reparto ID: ${json['reparto_id']}'
+                    : (json['REPARTO_ID'] != null ? 'Reparto ID: ${json['REPARTO_ID']}' : ''))));
+
     return PedidoItemModel(
-      fechaGeneracion: json['fecha_generacion']?.toString().trim() ??
-          json['fecha']?.toString().trim() ??
-          '',
-      codigo: json['codigo']?.toString().trim() ??
-          json['pedido_id']?.toString().trim() ??
-          json['id']?.toString().trim() ??
-          '',
-      cliente: json['cliente_nombre']?.toString().trim() ??
-          json['cliente']?.toString().trim() ??
-          (json['cliente_id'] != null ? 'Cliente ID: ${json['cliente_id']}' : 'Sin cliente'),
-      monto: parseMonto(json['monto'] ?? json['total']),
-      estado: json['estado']?.toString().trim() ?? 'NUEVO',
+      fechaGeneracion: fechaGen,
+      fechaEntrega: fechaEnt,
+      estadoFecha: estadoFec,
+      estadoColor: estadoCol,
+      id: idVal,
+      codigo: codigoVal,
+      cliente: clienteNombre,
+      monto: montoVal,
+      estado: estadoVal,
+      condicionVenta: condVenta,
+      reparto: repartoVal,
+      items: parsedItems,
     );
   }
 }
@@ -75,6 +295,8 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   bool _filterFinalizado = false;
   bool _filterNuevo = false;
   bool _filterPendiente = false;
+  bool _filterSoloOffline = false;
+  bool _filterSoloOnline = false;
 
   List<PedidoItemModel> _pedidosRemotos = [];
   bool _isLoading = true;
@@ -180,16 +402,87 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
       final statusLabel = full.order.syncStatus == 'PENDING_SYNC'
           ? 'PENDIENTE SYNC'
           : (full.order.syncStatus == 'SYNC_ERROR' ? 'ERROR SYNC' : 'FINALIZADO');
+      final mappedItems = full.items.map((it) {
+        final cod = it.productoCodigo.isNotEmpty ? it.productoCodigo : it.productoId.toString();
+        final des = it.descripcion.isNotEmpty ? it.descripcion : 'Producto #$cod';
+        return PedidoDetalleItem(
+          codigo: cod,
+          descripcion: des,
+          cantidad: it.cantidad,
+          precioUnitario: it.precioUnitario,
+          descuento: it.descuento,
+          precioTotal: it.precioTotal,
+        );
+      }).toList();
+
+      final cliText = full.order.clienteNombre.isNotEmpty
+          ? full.order.clienteNombre
+          : 'Cliente ID: ${full.order.clienteId}';
+
+      final repText = full.order.repartoNombre.isNotEmpty
+          ? full.order.repartoNombre
+          : (full.order.repartoId > 0 ? 'Reparto ID: ${full.order.repartoId}' : '');
+
       return PedidoItemModel(
         fechaGeneracion: full.order.fecha,
         codigo: 'LOC-${full.order.id}',
-        cliente: 'Cliente ID: ${full.order.clienteId}',
+        cliente: cliText,
         monto: full.order.total,
         estado: statusLabel,
+        condicionVenta: full.order.condicionVenta,
+        reparto: repText,
+        items: mappedItems,
+        isOffline: true,
       );
     }).toList();
 
-    return [...localItems, ..._pedidosRemotos];
+    // Para cada pedido remoto: si no contiene ítems en el JSON de cabecera,
+    // buscar si coincide con una orden local (por ID, código o cliente/monto) para asociar sus ítems
+    final enrichedRemotos = _pedidosRemotos.map((remoto) {
+      if (remoto.items.isNotEmpty) return remoto;
+
+      final matching = localOrders.cast<FullLocalOrder?>().firstWhere(
+        (loc) {
+          if (loc == null) return false;
+          if (remoto.codigo.isNotEmpty &&
+              (remoto.codigo == loc.order.id.toString() ||
+               remoto.codigo == 'LOC-${loc.order.id}')) {
+            return true;
+          }
+          if (remoto.id != null && remoto.id == loc.order.id.toString()) {
+            return true;
+          }
+          // Coincidencia por fecha y monto idénticos
+          if (remoto.fechaGeneracion.isNotEmpty &&
+              remoto.fechaGeneracion == loc.order.fecha &&
+              remoto.monto == loc.order.total) {
+            return true;
+          }
+          return false;
+        },
+        orElse: () => null,
+      );
+
+      if (matching != null && matching.items.isNotEmpty) {
+        final mappedItems = matching.items.map((it) {
+          final cod = it.productoCodigo.isNotEmpty ? it.productoCodigo : it.productoId.toString();
+          final des = it.descripcion.isNotEmpty ? it.descripcion : 'Producto #$cod';
+          return PedidoDetalleItem(
+            codigo: cod,
+            descripcion: des,
+            cantidad: it.cantidad,
+            precioUnitario: it.precioUnitario,
+            descuento: it.descuento,
+            precioTotal: it.precioTotal,
+          );
+        }).toList();
+
+        return remoto.copyWith(items: mappedItems);
+      }
+      return remoto;
+    }).toList();
+
+    return [...localItems, ...enrichedRemotos];
   }
 
   List<PedidoItemModel> _getPedidosFiltrados(List<PedidoItemModel> allPedidos) {
@@ -199,14 +492,20 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
           p.cliente.toLowerCase().contains(query) ||
           p.codigo.toLowerCase().contains(query);
 
+      if (!matchSearch) return false;
+
+      // Filtro por Origen (Offline vs Online)
+      if (_filterSoloOffline && !p.isOffline) return false;
+      if (_filterSoloOnline && p.isOffline) return false;
+
       final hasStatusFilter = _filterFinalizado || _filterNuevo || _filterPendiente;
-      if (!hasStatusFilter) return matchSearch;
+      if (!hasStatusFilter) return true;
 
       final matchState = (_filterFinalizado && (p.estado == 'FINALIZADO' || p.estado == 'SYNCED')) ||
           (_filterNuevo && p.estado == 'NUEVO') ||
           (_filterPendiente && (p.estado == 'PENDIENTE' || p.estado == 'PENDIENTE SYNC'));
 
-      return matchSearch && matchState;
+      return matchState;
     }).toList();
   }
 
@@ -215,8 +514,42 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
       _filterFinalizado = false;
       _filterNuevo = false;
       _filterPendiente = false;
+      _filterSoloOffline = false;
+      _filterSoloOnline = false;
       _searchController.clear();
     });
+  }
+
+  Widget _buildOriginPill(bool isOffline) {
+    final bg = isOffline ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9);
+    final border = isOffline ? const Color(0xFFFFB74D) : const Color(0xFFA5D6A7);
+    final color = isOffline ? const Color(0xFFE65100) : const Color(0xFF2E7D32);
+    final icon = isOffline ? Icons.cloud_off : Icons.cloud_done;
+    final label = isOffline ? 'OFFLINE' : 'ONLINE';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Color _getEstadoColor(String estado) {
@@ -245,9 +578,9 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         estado,
@@ -256,6 +589,15 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
           fontWeight: FontWeight.bold,
           color: color,
         ),
+      ),
+    );
+  }
+
+  void _abrirDetallePedido(BuildContext context, PedidoItemModel p) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PedidoDetailScreen(pedido: p),
       ),
     );
   }
@@ -273,16 +615,32 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Código de Pedido y Pill de Estado
+          // Código de Pedido, Origen y Pill de Estado
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'PEDIDO: ${p.codigo}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: Color(0xFF1976D2),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: InkWell(
+                        onTap: () => _abrirDetallePedido(context, p),
+                        child: Text(
+                          'PEDIDO: ${p.codigo}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF1976D2),
+                            decoration: TextDecoration.underline,
+                            decorationColor: Color(0xFF1976D2),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildOriginPill(p.isOffline),
+                  ],
                 ),
               ),
               _buildStatusPill(p.estado),
@@ -353,10 +711,13 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
             label: Text('Fecha Generacion', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
           ),
           DataColumn(
-            label: Text('Codigo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            label: Text('Origen', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
           ),
           DataColumn(
-            label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
+            label: Text('Codigo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1976D2))),
+          ),
+          DataColumn(
+            label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
           ),
           DataColumn(
             numeric: true,
@@ -370,26 +731,37 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
           final formattedMonto = '\$${p.monto.toStringAsFixed(2).replaceAll('.', ',')}';
           return DataRow(cells: [
             DataCell(Text(p.fechaGeneracion, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
-            DataCell(Text(p.codigo, style: const TextStyle(fontSize: 12, color: AppColors.textDark))),
+            DataCell(_buildOriginPill(p.isOffline)),
             DataCell(
               InkWell(
-                onTap: () {
-                  setState(() {
-                    _searchController.text = p.cliente;
-                  });
-                },
-                child: SizedBox(
-                  width: 180,
+                onTap: () => _abrirDetallePedido(context, p),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Text(
-                    p.cliente,
+                    p.codigo,
                     style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF1976D2),
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Color(0xFF1976D2),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
+              ),
+            ),
+            DataCell(
+              SizedBox(
+                width: 180,
+                child: Text(
+                  p.cliente,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -564,6 +936,39 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
                       title: Text('PENDIENTE (${_countByEstado("PENDIENTE", allPedidos) + _countByEstado("PENDIENTE SYNC", allPedidos)})', style: const TextStyle(fontSize: 13)),
                       value: _filterPendiente,
                       onChanged: (val) => setState(() => _filterPendiente = val ?? false),
+                    ),
+                    const Divider(height: 1, color: AppColors.cardBorder),
+                    CheckboxListTile(
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Row(
+                        children: [
+                          const Icon(Icons.cloud_off, size: 16, color: Color(0xFFE65100)),
+                          const SizedBox(width: 6),
+                          Text('MODO OFFLINE (${allPedidos.where((p) => p.isOffline).length})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                      value: _filterSoloOffline,
+                      onChanged: (val) => setState(() {
+                        _filterSoloOffline = val ?? false;
+                        if (_filterSoloOffline) _filterSoloOnline = false;
+                      }),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Row(
+                        children: [
+                          const Icon(Icons.cloud_done, size: 16, color: Color(0xFF2E7D32)),
+                          const SizedBox(width: 6),
+                          Text('MODO ONLINE / API (${allPedidos.where((p) => !p.isOffline).length})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                      value: _filterSoloOnline,
+                      onChanged: (val) => setState(() {
+                        _filterSoloOnline = val ?? false;
+                        if (_filterSoloOnline) _filterSoloOffline = false;
+                      }),
                     ),
                   ],
                 ),

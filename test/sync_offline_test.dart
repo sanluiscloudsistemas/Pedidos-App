@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:preventa/data/datasources/local/app_database.dart';
 import 'package:preventa/domain/repositories/sync_repository.dart';
 import 'package:preventa/presentation/notifiers/connectivity_notifier.dart';
 import 'package:preventa/presentation/notifiers/sync_notifier.dart';
@@ -11,24 +10,29 @@ class FakeSyncRepository implements SyncRepository {
   Future<int> saveOrderOffline({
     required int organizacionId,
     required int clienteId,
+    String clienteNombre = '',
     required int vendedorId,
     required int repartoId,
+    String repartoNombre = '',
     required String condicionVenta,
     required double total,
     required String fecha,
+    String syncStatus = 'PENDING_SYNC',
     required List<Map<String, dynamic>> items,
   }) async {
     final newId = _orders.length + 1;
-    final orderData = PedidosLocalData(
+    final orderData = LocalOrderEntity(
       id: newId,
       organizacionId: organizacionId,
       clienteId: clienteId,
+      clienteNombre: clienteNombre,
       vendedorId: vendedorId,
       repartoId: repartoId,
+      repartoNombre: repartoNombre,
       condicionVenta: condicionVenta,
       total: total,
       fecha: fecha,
-      syncStatus: 'PENDING_SYNC',
+      syncStatus: syncStatus,
       createdAt: DateTime.now(),
     );
 

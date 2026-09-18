@@ -36,9 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_dotenv: ^6.0.0
   dio: ^5.9.2
-  drift: ^2.17.0
-  sqflite: ^2.4.1
-  drift_sqflite: ^2.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   path_provider: ^2.1.2
   path: ^1.9.0
   provider: ^6.1.5+1
@@ -49,15 +48,11 @@ dependencies:
   jwt_decoder: ^2.0.1
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
-  sqflite_common_ffi: ^2.4.0+3
-
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   test: ^1.25.8
-  drift_dev: ^2.17.0
-  build_runner: ^2.4.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -106,6 +101,3 @@ flutter:
   #         weight: 700
   #
   # see https://flutter.dev/to/font-from-package
-
-dependency_overrides:
-  sqlite3: ^2.4.3

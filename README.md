@@ -56,6 +56,33 @@ Este proyecto utiliza BDD (Behavior Driven Development). Las especificaciones de
 - [login.feature](test/features/login.feature): Escenarios para la funcionalidad de inicio de sesión.
 - [toma_de_pedidos.feature](test/features/toma_de_pedidos.feature): Escenarios para el flujo principal de toma de pedidos.
 
+## Solución de Problemas (Troubleshooting)
+
+### Error en Windows Desktop: `fatal error C1083: Cannot open include file: 'atlstr.h'`
+
+Este error ocurre al compilar el plugin nativo `flutter_secure_storage_windows` debido a la ausencia de la biblioteca Active Template Library (ATL) de C++ en las herramientas de compilación de Visual Studio.
+
+**Pasos para solucionarlo:**
+
+1. Abra el instalador de Visual Studio ejecutando en la terminal (`pwsh`):
+   ```powershell
+   & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+   ```
+2. En la ventana del instalador, localice su instalación de **Visual Studio Build Tools** (ej. 2019 o 2022) y haga clic en **Modificar**.
+3. Vaya a la pestaña **Componentes individuales** (Individual components).
+4. En el buscador escriba `ATL` y marque la casilla:
+   - **C++ ATL para las herramientas de compilación de v142 (x86 y x64)** (o **v143** según su versión de herramientas).
+5. Haga clic en el botón **Modificar** (abajo a la derecha) y espere a que finalice la descarga e instalación.
+6. Cierre y vuelva a abrir la terminal de Antigravity / PowerShell y ejecute:
+   ```powershell
+   flutter run -d windows
+   ```
+
+### Persistencia Local Offline (Hive)
+
+La persistencia local de pedidos, clientes y faltantes se gestiona con **Hive** (`hive` y `hive_flutter`), una base de datos ligera y 100% en Dart puro (sin SQLite ni dependencias nativas de C++). Esto permite la compatibilidad multiplataforma inmediata en Android, iOS, Windows y Web (IndexedDB) sin requerir compiladores de C++ para el motor de datos.
+
 ---
 > [!NOTE]
 > Este archivo se actualiza continuamente a medida que el proyecto evoluciona con nuevas funcionalidades y requisitos.
+
