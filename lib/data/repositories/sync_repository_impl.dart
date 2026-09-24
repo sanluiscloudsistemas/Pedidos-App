@@ -1,3 +1,4 @@
+import '../../core/utils/retention_calculator.dart';
 import '../../domain/repositories/sync_repository.dart';
 import '../datasources/local/hive_service.dart';
 import '../datasources/remote/api_service.dart';
@@ -222,5 +223,31 @@ class SyncRepositoryImpl implements SyncRepository {
       return 'CC';
     }
     return upper.isNotEmpty ? upper : 'CNT';
+  }
+
+  @override
+  Future<void> deleteOrder(int orderId) async {
+    return hiveService.deleteOrder(orderId);
+  }
+
+  @override
+  Future<int> checkAndPurgeDailySyncedOrders(String? retentionParam) async {
+    final now = DateTime.now();
+    final todayString =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+    final lastPurgeDate = hiveService.getLastPurgeDate();
+    if (lastPurgeDate == todayString) {
+      return 0;
+    }
+
+    final cutoffDate = RetentionCalculator.calculateCutoffDate(
+      from: now,
+      retention: retentionParam,
+    );
+
+    final purgedCount = await hiveService.purgeSyncedOrdersBefore(cutoffDate);
+    await hiveService.setLastPurgeDate(todayString);
+    return purgedCount;
   }
 }

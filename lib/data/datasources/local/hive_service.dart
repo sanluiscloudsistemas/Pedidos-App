@@ -8,11 +8,13 @@ class HiveService {
   static const String orderItemsBoxName = 'preventas_order_items_box';
   static const String clientsBoxName = 'preventas_clients_box';
   static const String faltantesBoxName = 'preventas_faltantes_box';
+  static const String metadataBoxName = 'preventas_metadata_box';
 
   late Box<Map> _ordersBox;
   late Box<Map> _orderItemsBox;
   late Box<Map> _clientsBox;
   late Box<Map> _faltantesBox;
+  late Box<dynamic> _metadataBox;
 
   final StreamController<List<FullLocalOrder>> _ordersStreamController =
       StreamController<List<FullLocalOrder>>.broadcast();
@@ -25,6 +27,7 @@ class HiveService {
     _orderItemsBox = await Hive.openBox<Map>(orderItemsBoxName);
     _clientsBox = await Hive.openBox<Map>(clientsBoxName);
     _faltantesBox = await Hive.openBox<Map>(faltantesBoxName);
+    _metadataBox = await Hive.openBox<dynamic>(metadataBoxName);
 
     // Emitir estado inicial de órdenes
     _notifyOrdersChanged();
@@ -171,6 +174,50 @@ class HiveService {
     }
   }
 
+  /// Elimina definitivamente un pedido y sus ítems de la base local
+  Future<void> deleteOrder(int orderId) async {
+    await _ordersBox.delete(orderId);
+
+    // Eliminar ítems asociados
+    final itemsToDelete = <dynamic>[];
+    for (final key in _orderItemsBox.keys) {
+      final itemMap = _orderItemsBox.get(key);
+      if (itemMap != null && (itemMap['pedidoLocalId'] as num?)?.toInt() == orderId) {
+        itemsToDelete.add(key);
+      }
+    }
+    for (final itemKey in itemsToDelete) {
+      await _orderItemsBox.delete(itemKey);
+    }
+
+    _notifyOrdersChanged();
+  }
+
+  /// Elimina definitivamente pedidos SYNCED creados con anterioridad a [cutoffDate]
+  Future<int> purgeSyncedOrdersBefore(DateTime cutoffDate) async {
+    final all = getAllOrders();
+    int purgedCount = 0;
+
+    for (final full in all) {
+      if (full.order.syncStatus == 'SYNCED' && full.order.createdAt.isBefore(cutoffDate)) {
+        await deleteOrder(full.order.id);
+        purgedCount++;
+      }
+    }
+
+    return purgedCount;
+  }
+
+  /// Retorna la fecha (formato YYYY-MM-DD) de la última purga ejecutada
+  String? getLastPurgeDate() {
+    return _metadataBox.get('last_synced_orders_purge_date') as String?;
+  }
+
+  /// Almacena la fecha (formato YYYY-MM-DD) de la última purga ejecutada
+  Future<void> setLastPurgeDate(String dateStr) async {
+    await _metadataBox.put('last_synced_orders_purge_date', dateStr);
+  }
+
   // ==================== CLIENTES ====================
 
   /// Guarda un cliente offline
@@ -289,5 +336,6 @@ class HiveService {
     await _orderItemsBox.close();
     await _clientsBox.close();
     await _faltantesBox.close();
+    await _metadataBox.close();
   }
 }
