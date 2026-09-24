@@ -205,4 +205,10 @@ abstract class SyncRepository {
 
   /// Sincroniza todos los pedidos pendientes con la API remota
   Future<int> syncPendingOrders();
+
+  /// Elimina definitivamente un pedido por su ID de la base local
+  Future<void> deleteOrder(int orderId);
+
+  /// Ejecuta la purga diaria de pedidos SYNCED expirados si es la primera conexión del día
+  Future<int> checkAndPurgeDailySyncedOrders(String? retentionParam);
 }

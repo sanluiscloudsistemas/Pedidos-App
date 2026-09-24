@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../domain/repositories/sync_repository.dart';
 import 'connectivity_notifier.dart';
@@ -26,12 +27,27 @@ class SyncNotifier extends ChangeNotifier {
 
   StreamSubscription<List<FullLocalOrder>>? _ordersSubscription;
   bool _wasOffline = false;
+  Timer? _periodicSyncTimer;
+  final Duration periodicSyncInterval;
+  final String? retentionParam;
 
   SyncNotifier({
     required this.syncRepository,
     required this.connectivityNotifier,
+    this.periodicSyncInterval = const Duration(minutes: 30),
+    this.retentionParam,
   }) {
     _initListeners();
+    _startPeriodicSyncTimer();
+  }
+
+  void _startPeriodicSyncTimer() {
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(periodicSyncInterval, (_) {
+      if (connectivityNotifier.isConnected) {
+        syncPendingOrdersNow();
+      }
+    });
   }
 
   void _initListeners() {
@@ -45,6 +61,11 @@ class SyncNotifier extends ChangeNotifier {
     _wasOffline = !connectivityNotifier.isConnected;
 
     connectivityNotifier.addListener(_handleConnectivityChange);
+
+    // 3. Si arranca con conexión, evaluar purga diaria de la primera conexión del día
+    if (connectivityNotifier.isConnected) {
+      runDailyPurgeIfNeeded();
+    }
   }
 
   void _handleConnectivityChange() {
@@ -54,11 +75,26 @@ class SyncNotifier extends ChangeNotifier {
     if (_wasOffline && currentlyOnline) {
       _wasOffline = false;
       syncPendingOrdersNow();
+      runDailyPurgeIfNeeded();
     } else if (!currentlyOnline) {
       _wasOffline = true;
     }
 
     notifyListeners();
+  }
+
+  /// Ejecuta la purga diaria de pedidos SYNCED expirados si es la primera conexión del día
+  Future<int> runDailyPurgeIfNeeded() async {
+    if (!connectivityNotifier.isConnected) return 0;
+    String? retention = retentionParam;
+    if (retention == null) {
+      try {
+        retention = dotenv.maybeGet('SYNCED_ORDERS_RETENTION') ?? '30d';
+      } catch (_) {
+        retention = '30d';
+      }
+    }
+    return syncRepository.checkAndPurgeDailySyncedOrders(retention);
   }
 
   /// Guarda un nuevo pedido de forma offline en Hive
@@ -177,6 +213,7 @@ class SyncNotifier extends ChangeNotifier {
 
   @override
   void dispose() {
+    _periodicSyncTimer?.cancel();
     connectivityNotifier.removeListener(_handleConnectivityChange);
     _ordersSubscription?.cancel();
     super.dispose();

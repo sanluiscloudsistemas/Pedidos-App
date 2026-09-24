@@ -94,6 +94,33 @@ class FakeSyncRepository implements SyncRepository {
   }) async {
     return 1;
   }
+
+  @override
+  Future<void> deleteOrder(int orderId) async {
+    _orders.removeWhere((o) => o.order.id == orderId);
+  }
+
+  String? _lastPurgeDate;
+
+  @override
+  Future<int> checkAndPurgeDailySyncedOrders(String? retentionParam) async {
+    final now = DateTime.now();
+    final todayString =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    if (_lastPurgeDate == todayString) return 0;
+
+    int count = 0;
+    _orders.removeWhere((o) {
+      if (o.order.syncStatus == 'SYNCED') {
+        count++;
+        return true;
+      }
+      return false;
+    });
+
+    _lastPurgeDate = todayString;
+    return count;
+  }
 }
 
 void main() {
