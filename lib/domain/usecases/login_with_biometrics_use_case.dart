@@ -9,4 +9,12 @@ class LoginWithBiometricsUseCase {
   Future<UserEntity?> execute() {
     return repository.loginWithBiometrics();
   }
+
+  Future<bool> canUseBiometrics() {
+    return repository.canUseBiometrics();
+  }
+
+  Future<bool> isBiometricAvailable() {
+    return repository.isBiometricAvailable();
+  }
 }

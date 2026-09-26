@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -30,9 +31,9 @@ class PreventaAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
-  void _handleLogout(BuildContext context) {
+  Future<void> _handleLogout(BuildContext context) async {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    authNotifier.logout();
+    await authNotifier.logout();
     if (context.mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -180,13 +181,15 @@ class PreventaAppBar extends StatelessWidget implements PreferredSizeWidget {
                       : 'Modo Offline: Sin conexión a Internet. Los cambios se guardarán localmente.',
                 ),
                 duration: const Duration(seconds: 3),
-                action: SnackBarAction(
-                  label: 'Probar Offline',
-                  textColor: Colors.amber,
-                  onPressed: () {
-                    connectivityNotifier?.toggleManualSimulatedState();
-                  },
-                ),
+                action: kDebugMode
+                    ? SnackBarAction(
+                        label: 'Probar Offline (Debug)',
+                        textColor: Colors.amber,
+                        onPressed: () {
+                          connectivityNotifier?.toggleManualSimulatedState();
+                        },
+                      )
+                    : null,
               ),
             );
           },

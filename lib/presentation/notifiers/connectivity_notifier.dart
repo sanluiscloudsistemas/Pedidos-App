@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Notificador de estado de conectividad a Internet en tiempo real.
@@ -14,7 +15,8 @@ class ConnectivityNotifier extends ChangeNotifier {
   bool _manualOfflineState = false;
 
   bool get isConnected {
-    if (_isManualOverride) {
+    // La simulación manual solo se encuentra habilitada en entornos de desarrollo / pruebas (kDebugMode)
+    if (kDebugMode && _isManualOverride) {
       return !_manualOfflineState;
     }
     return _isConnected;
@@ -43,8 +45,9 @@ class ConnectivityNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Alternar simulación manual de estado Online/Offline
+  /// Alternar simulación manual de estado Online/Offline (solo disponible en modo Debug)
   void toggleManualSimulatedState() {
+    if (!kDebugMode) return;
     _isManualOverride = true;
     _manualOfflineState = !_manualOfflineState;
     notifyListeners();

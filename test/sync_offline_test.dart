@@ -18,6 +18,8 @@ class FakeSyncRepository implements SyncRepository {
     required double total,
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'NUEVO',
     required List<Map<String, dynamic>> items,
   }) async {
     final newId = _orders.length + 1;
@@ -33,6 +35,8 @@ class FakeSyncRepository implements SyncRepository {
       total: total,
       fecha: fecha,
       syncStatus: syncStatus,
+      isCreatedOnline: isCreatedOnline,
+      estado: estado,
       createdAt: DateTime.now(),
     );
 
@@ -194,5 +198,80 @@ void main() {
 
     final pending = await syncRepository.getPendingSyncOrders();
     expect(pending.isEmpty, isTrue);
+  });
+
+  test('No permite sincronizar mediante la API si el sistema está en modo offline (simulado o real)', () async {
+    // 1. Simular modo offline
+    connectivityNotifier.toggleManualSimulatedState();
+    expect(connectivityNotifier.isConnected, isFalse);
+
+    await syncNotifier.saveOrderOffline(
+      organizacionId: 14,
+      clienteId: 555,
+      vendedorId: 23,
+      repartoId: 10,
+      condicionVenta: 'CONTADO',
+      total: 5000.0,
+      fecha: '26/09/2026',
+      items: [],
+    );
+
+    // 2. Intentar forzar sincronización manual mientras sigue offline
+    final synced = await syncNotifier.syncPendingOrdersNow();
+    expect(synced, equals(0));
+
+    // Verificar que los pedidos pendientes permanecen intactos
+    final pending = await syncRepository.getPendingSyncOrders();
+    expect(pending.length, equals(1));
+    expect(pending.first.order.syncStatus, equals('PENDING_SYNC'));
+  });
+
+  test('Guarda en base local pedidos online como SYNCED y offline como PENDING_SYNC', () async {
+    // 1. Guardar pedido online
+    await syncNotifier.saveOrderOffline(
+      organizacionId: 14,
+      clienteId: 101,
+      vendedorId: 23,
+      repartoId: 1,
+      condicionVenta: 'CONTADO',
+      total: 15000.0,
+      fecha: '26/09/2026',
+      syncStatus: 'SYNCED',
+      isCreatedOnline: true,
+      items: [],
+    );
+
+    // 2. Guardar pedido offline
+    await syncNotifier.saveOrderOffline(
+      organizacionId: 14,
+      clienteId: 102,
+      vendedorId: 23,
+      repartoId: 2,
+      condicionVenta: 'CTA_CTE',
+      total: 8000.0,
+      fecha: '26/09/2026',
+      syncStatus: 'PENDING_SYNC',
+      isCreatedOnline: false,
+      items: [],
+    );
+
+    final allOrders = await syncRepository.getAllLocalOrders();
+    expect(allOrders.length, equals(2));
+
+    final onlineOrder = allOrders.firstWhere((o) => o.order.clienteId == 101);
+    expect(onlineOrder.order.isCreatedOnline, isTrue);
+    expect(onlineOrder.order.syncStatus, equals('SYNCED'));
+    expect(onlineOrder.order.estado, equals('NUEVO'));
+
+    final offlineOrder = allOrders.firstWhere((o) => o.order.clienteId == 102);
+    expect(offlineOrder.order.isCreatedOnline, isFalse);
+    expect(offlineOrder.order.syncStatus, equals('PENDING_SYNC'));
+    expect(offlineOrder.order.estado, equals('NUEVO'));
+
+    // Solo el offline cuenta como pendiente de sincronizar
+    final pending = await syncRepository.getPendingSyncOrders();
+    expect(pending.length, equals(1));
+    expect(pending.first.order.clienteId, equals(102));
+    expect(syncNotifier.pendingSyncCount, equals(1));
   });
 }

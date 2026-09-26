@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/date_formatter.dart';
 import '../../data/datasources/remote/api_service.dart';
 import '../notifiers/connectivity_notifier.dart';
 import '../notifiers/sync_notifier.dart';
@@ -421,8 +422,8 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       final isOnline = Provider.of<ConnectivityNotifier>(context, listen: false).isConnected;
 
       final now = DateTime.now();
-      final fechaStr =
-          "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+      final fechaDisplay = DateFormatter.formatDdMonYyyyHhMiSs(now);
+      final fechaOracle = DateFormatter.formatOracleTimestamp(now);
 
       final orgId = int.tryParse(apiService.sisorgId ?? '') ?? 14;
       final sisperId = int.tryParse(apiService.sisperId ?? '') ?? 19565;
@@ -459,9 +460,10 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           'dependencia_id': depId,
           'deposito_id': depositoId,
           'reparto_id': repartoId,
-          'fecha': fechaStr,
+          'fecha': fechaOracle,
           'condicionventa': condicionCode,
           'total': _totalMonto,
+          'estado': 'NUEVO',
         },
         'items': itemsPayload,
       };
@@ -483,7 +485,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
 
       if (isOnline) {
         await apiService.postPedido(payload);
-        // Guardar copia local con estado SYNCED para que los ítems queden asociados a la cabecera
+        // Guardar copia local con estado SYNCED registrando que fue creado online y con estado comercial NUEVO
         await syncNotifier.saveOrderOffline(
           organizacionId: orgId,
           clienteId: clienteId,
@@ -493,8 +495,10 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           repartoNombre: repName,
           condicionVenta: condicionCode,
           total: _totalMonto,
-          fecha: fechaStr,
+          fecha: fechaDisplay,
           syncStatus: 'SYNCED',
+          isCreatedOnline: true,
+          estado: 'NUEVO',
           items: itemsMapList,
         );
       } else {
@@ -507,8 +511,10 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           repartoNombre: repName,
           condicionVenta: condicionCode,
           total: _totalMonto,
-          fecha: fechaStr,
+          fecha: fechaDisplay,
           syncStatus: 'PENDING_SYNC',
+          isCreatedOnline: false,
+          estado: 'NUEVO',
           items: itemsMapList,
         );
       }

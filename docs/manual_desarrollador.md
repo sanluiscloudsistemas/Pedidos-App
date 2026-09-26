@@ -6,6 +6,8 @@ Bienvenido al **Manual del Desarrollador** de la aplicación móvil de **Prevent
 
 ## 🗂️ Índice de Subdocumentos Detallados
 
+- 📱 **[Manual del Usuario (Operativa en Campo, Login y Pedidos)](file:///c:/Projects/Frontend/flutter/preventas/docs/manual_usuario.md)**
+
 Haga clic en cualquiera de los enlaces a continuación para acceder al análisis en profundidad y a la justificación de los patrones de diseño aplicados:
 
 1. **[📐 01. Arquitectura del Sistema, Capas y Patrones de Diseño](file:///c:/Projects/Frontend/flutter/preventas/docs/manual/01_arquitectura_y_capas.md)**

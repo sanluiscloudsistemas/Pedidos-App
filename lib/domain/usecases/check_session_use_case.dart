@@ -9,4 +9,8 @@ class CheckSessionUseCase {
   Future<UserEntity?> execute() {
     return repository.getCurrentUser();
   }
+
+  Future<Map<String, String>?> getSavedUserData() {
+    return repository.getSavedUserData();
+  }
 }

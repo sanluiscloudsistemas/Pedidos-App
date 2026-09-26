@@ -97,7 +97,7 @@ class SyncNotifier extends ChangeNotifier {
     return syncRepository.checkAndPurgeDailySyncedOrders(retention);
   }
 
-  /// Guarda un nuevo pedido de forma offline en Hive
+  /// Guarda un nuevo pedido (creado online u offline) en Hive
   Future<int> saveOrderOffline({
     required int organizacionId,
     required int clienteId,
@@ -109,6 +109,8 @@ class SyncNotifier extends ChangeNotifier {
     required double total,
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'NUEVO',
     required List<Map<String, dynamic>> items,
   }) async {
     final id = await syncRepository.saveOrderOffline(
@@ -122,11 +124,13 @@ class SyncNotifier extends ChangeNotifier {
       total: total,
       fecha: fecha,
       syncStatus: syncStatus,
+      isCreatedOnline: isCreatedOnline,
+      estado: estado,
       items: items,
     );
 
-    // Si actualmente está online, intentar sincronizar de inmediato
-    if (connectivityNotifier.isConnected) {
+    // Si actualmente está online y el pedido quedó pendiente de sync, intentar sincronizar de inmediato
+    if (connectivityNotifier.isConnected && syncStatus == 'PENDING_SYNC') {
       syncPendingOrdersNow();
     }
 
@@ -189,6 +193,13 @@ class SyncNotifier extends ChangeNotifier {
 
   /// Dispara la sincronización manual o automática de pedidos pendientes
   Future<int> syncPendingOrdersNow() async {
+    // Bloquear sincronización si el dispositivo no tiene conexión real o está en modo offline simulado
+    if (!connectivityNotifier.isConnected) {
+      _lastSyncMessage = 'No se puede sincronizar: el dispositivo se encuentra sin conexión o en modo offline.';
+      notifyListeners();
+      return 0;
+    }
+
     if (_isSyncing) return 0;
 
     _isSyncing = true;

@@ -11,4 +11,9 @@
 - Control de pruebas locales y en hardware: verificación de estado de dispositivo vía ADB, ruteo de red (reverse proxy ADB o IP de red LAN para evitar errores con localhost) y generación previa de esquemas Drift SQLite.
 - Consultar la especificación completa del agente en [.agents/skills/build-deploy-android/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/build-deploy-android/SKILL.md) y las reglas en [.agents/rules/reglas_build_deploy_android.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/rules/reglas_build_deploy_android.md).
 
+## Agente de Verificación de Calidad y Pruebas (Flutter QA Verifier)
+- Responsable de ejecutar la verificación integral de calidad, análisis estático y pruebas del código tras finalizar cada requerimiento de desarrollo.
+- Regla obligatoria: Ejecutar el análisis estático (`flutter analyze`), la suite de pruebas (`flutter test`) y la verificación de compilación (`assembleDebug` / `build bundle`) para garantizar que no existan errores de miembros no encontrados, sintaxis o ensamblado antes de dar por completada una tarea.
+- Consultar la especificación completa en [.agents/skills/flutter-qa-verifier/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/flutter-qa-verifier/SKILL.md) y las directrices en [.agents/rules/regla_qa_verificacion_post_desarrollo.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/rules/regla_qa_verificacion_post_desarrollo.md).
+
 

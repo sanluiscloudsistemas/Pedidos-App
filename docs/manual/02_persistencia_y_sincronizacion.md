@@ -94,8 +94,30 @@ sequenceDiagram
 
 ---
 
+## 🏷️ 5. Distinción entre Estados de Negocio y Estados de Sincronización
+
+La aplicación mantiene una estricta separación de responsabilidades entre el ciclo de vida comercial del pedido y su estado de transporte:
+
+- **Estados de Negocio (Backend / Oracle APEX):**
+  - `'NUEVO'`: Estado inicial asignado a todo pedido recién creado por el preventista.
+  - `'PENDIENTE'`: Pedido en curso o en espera de validación administrativa.
+  - `'FINALIZADO'`: Pedido despachado, facturado o cerrado administrativamente.
+- **Estados de Sincronización Local (Móvil):**
+  - `'SYNCED'` / `'ONLINE'`: Pedido transmitido exitosamente a la API remota.
+  - `'PENDING_SYNC'` / `'OFFLINE'`: Pedido creado en el dispositivo sin conexión, almacenado localmente y en espera de conexión para ser enviado automáticamente.
+
+---
+
+## 🔒 6. Almacenamiento Seguro de Credenciales y Sesión Offline (`SecureStorageService`)
+
+- **Persistencia Cifrada:** Utiliza `FlutterSecureStorage` (Keychain en iOS, Keystore cifrado AES en Android y SharedPreferences en Windows) para almacenar el JWT con vigencia de 8 horas.
+- **Hash Seguro de Credenciales:** Mediante [`HashUtil`](file:///c:/Projects/Frontend/flutter/preventas/lib/core/utils/hash_util.dart) (SHA-256 con salt), se resguarda el hash de la última combinación de Organización, Usuario y Contraseña validada exitosamente online.
+- **Validación Offline:** Al ingresar sin conexión, el sistema compara el hash local y valida que el JWT no haya expirado, garantizando operatividad segura aún en modo avión.
+
+---
+
 ## 💡 Patrones de Diseño Aplicados
 
 1. **Patrón Observer:** `SyncNotifier` observa los cambios en `ConnectivityNotifier` y reacciona de inmediato ante transiciones de red.
-2. **Patrón Transacción:** El guardado del pedido y sus N artículos en SQLite se realiza mediante `db.transaction(...)` para asegurar consistencia atómica (si falla la inserción de un artículo, se revierte la cabecera).
-3. **Patrón Anti-Corruption Layer (ACL):** `SyncRepositoryImpl` transforma las entidades relacionales de Drift en DTOs JSON antes de enviarlos a la API remota.
+2. **Patrón Transacción:** El guardado del pedido y sus N artículos se realiza atómicamente para asegurar consistencia.
+3. **Patrón Anti-Corruption Layer (ACL):** `SyncRepositoryImpl` transforma las entidades relacionales locales en DTOs JSON antes de enviarlos a la API remota.

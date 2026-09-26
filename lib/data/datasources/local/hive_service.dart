@@ -53,6 +53,8 @@ class HiveService {
     required double total,
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'NUEVO',
     required List<Map<String, dynamic>> items,
   }) async {
     // Generar ID autoincremental
@@ -73,6 +75,8 @@ class HiveService {
       total: total,
       fecha: fecha,
       syncStatus: syncStatus,
+      isCreatedOnline: isCreatedOnline,
+      estado: estado,
       createdAt: DateTime.now(),
     );
 

@@ -13,6 +13,8 @@ class LocalOrderEntity {
   final String syncStatus;
   final String? syncErrorMessage;
   final DateTime createdAt;
+  final bool isCreatedOnline;
+  final String estado;
 
   const LocalOrderEntity({
     required this.id,
@@ -28,6 +30,8 @@ class LocalOrderEntity {
     this.syncStatus = 'PENDING_SYNC',
     this.syncErrorMessage,
     required this.createdAt,
+    this.isCreatedOnline = false,
+    this.estado = 'NUEVO',
   });
 
   Map<String, dynamic> toMap() {
@@ -45,10 +49,15 @@ class LocalOrderEntity {
       'syncStatus': syncStatus,
       'syncErrorMessage': syncErrorMessage,
       'createdAt': createdAt.toIso8601String(),
+      'isCreatedOnline': isCreatedOnline,
+      'estado': estado,
     };
   }
 
   factory LocalOrderEntity.fromMap(Map<dynamic, dynamic> map) {
+    final status = map['syncStatus']?.toString() ?? 'PENDING_SYNC';
+    final bool createdOnline = map['isCreatedOnline'] == true || status == 'SYNCED';
+
     return LocalOrderEntity(
       id: (map['id'] as num?)?.toInt() ?? 0,
       organizacionId: (map['organizacionId'] as num?)?.toInt() ?? 0,
@@ -60,17 +69,21 @@ class LocalOrderEntity {
       condicionVenta: map['condicionVenta']?.toString() ?? 'CONTADO',
       total: (map['total'] as num?)?.toDouble() ?? 0.0,
       fecha: map['fecha']?.toString() ?? '',
-      syncStatus: map['syncStatus']?.toString() ?? 'PENDING_SYNC',
+      syncStatus: status,
       syncErrorMessage: map['syncErrorMessage']?.toString(),
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      isCreatedOnline: createdOnline,
+      estado: map['estado']?.toString() ?? 'NUEVO',
     );
   }
 
   LocalOrderEntity copyWith({
     String? syncStatus,
     String? syncErrorMessage,
+    bool? isCreatedOnline,
+    String? estado,
   }) {
     return LocalOrderEntity(
       id: id,
@@ -86,6 +99,8 @@ class LocalOrderEntity {
       syncStatus: syncStatus ?? this.syncStatus,
       syncErrorMessage: syncErrorMessage ?? this.syncErrorMessage,
       createdAt: createdAt,
+      isCreatedOnline: isCreatedOnline ?? this.isCreatedOnline,
+      estado: estado ?? this.estado,
     );
   }
 }
@@ -168,6 +183,8 @@ abstract class SyncRepository {
     required double total,
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'NUEVO',
     required List<Map<String, dynamic>> items,
   });
 

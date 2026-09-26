@@ -1,3 +1,4 @@
+import '../../core/utils/date_formatter.dart';
 import '../../core/utils/retention_calculator.dart';
 import '../../domain/repositories/sync_repository.dart';
 import '../datasources/local/hive_service.dart';
@@ -6,10 +7,12 @@ import '../datasources/remote/api_service.dart';
 class SyncRepositoryImpl implements SyncRepository {
   final HiveService hiveService;
   final ApiService apiService;
+  final bool Function()? isOnline;
 
   SyncRepositoryImpl({
     required this.hiveService,
     required this.apiService,
+    this.isOnline,
   });
 
   @override
@@ -24,6 +27,8 @@ class SyncRepositoryImpl implements SyncRepository {
     required double total,
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'NUEVO',
     required List<Map<String, dynamic>> items,
   }) async {
     return hiveService.saveOrder(
@@ -37,6 +42,8 @@ class SyncRepositoryImpl implements SyncRepository {
       total: total,
       fecha: fecha,
       syncStatus: syncStatus,
+      isCreatedOnline: isCreatedOnline,
+      estado: estado,
       items: items,
     );
   }
@@ -102,6 +109,12 @@ class SyncRepositoryImpl implements SyncRepository {
 
   @override
   Future<int> syncPendingOrders() async {
+    // Si la verificación de conectividad reporta offline (real o simulado),
+    // no enviar peticiones a la API para prevenir errores de red y estados inconsistentes.
+    if (isOnline != null && !isOnline!()) {
+      return 0;
+    }
+
     int syncedCount = 0;
 
     // 1. Sincronizar Pedidos
@@ -121,9 +134,10 @@ class SyncRepositoryImpl implements SyncRepository {
             'dependencia_id': depId,
             'deposito_id': depositoId,
             'reparto_id': fullOrder.order.repartoId,
-            'fecha': fullOrder.order.fecha,
+            'fecha': DateFormatter.formatOracleTimestamp(fullOrder.order.createdAt),
             'condicionventa': _mapCondicionVenta(fullOrder.order.condicionVenta),
             'total': fullOrder.order.total,
+            'estado': fullOrder.order.estado.isNotEmpty ? fullOrder.order.estado : 'NUEVO',
           },
           'items': fullOrder.items.map((it) => {
             'producto_codigo': it.productoId.toString(),
