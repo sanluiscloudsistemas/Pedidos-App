@@ -19,7 +19,12 @@ class HiveService {
   final StreamController<List<FullLocalOrder>> _ordersStreamController =
       StreamController<List<FullLocalOrder>>.broadcast();
 
-  Stream<List<FullLocalOrder>> get ordersStream => _ordersStreamController.stream;
+  Stream<List<FullLocalOrder>> get ordersStream async* {
+    if (Hive.isBoxOpen(ordersBoxName)) {
+      yield getAllOrders();
+    }
+    yield* _ordersStreamController.stream;
+  }
 
   /// Inicializa las cajas locales de Hive
   Future<void> init() async {
@@ -34,7 +39,7 @@ class HiveService {
   }
 
   void _notifyOrdersChanged() {
-    if (!_ordersStreamController.isClosed) {
+    if (!_ordersStreamController.isClosed && Hive.isBoxOpen(ordersBoxName)) {
       _ordersStreamController.add(getAllOrders());
     }
   }

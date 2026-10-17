@@ -51,7 +51,13 @@ class SyncNotifier extends ChangeNotifier {
   }
 
   void _initListeners() {
-    // 1. Escuchar cambios de la lista de pedidos en Hive en tiempo real
+    // 1. Cargar estado inicial de órdenes locales
+    syncRepository.getAllLocalOrders().then((orders) {
+      _localOrders = orders;
+      notifyListeners();
+    });
+
+    // 2. Escuchar cambios de la lista de pedidos en Hive en tiempo real
     _ordersSubscription = syncRepository.watchAllLocalOrders().listen((orders) {
       _localOrders = orders;
       notifyListeners();

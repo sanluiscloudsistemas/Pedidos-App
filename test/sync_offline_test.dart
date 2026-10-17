@@ -280,4 +280,37 @@ void main() {
     expect(pending.first.order.clienteId, equals(102));
     expect(syncNotifier.pendingSyncCount, equals(1));
   });
+
+  test('SyncNotifier carga pedidos preexistentes inmediatamente al inicializarse sin requerir crear un nuevo pedido', () async {
+    // 1. Repositorio con órdenes preexistentes
+    final repo = FakeSyncRepository();
+    await repo.saveOrderOffline(
+      organizacionId: 1,
+      clienteId: 999,
+      clienteNombre: 'Cliente Existente',
+      vendedorId: 10,
+      repartoId: 1,
+      condicionVenta: 'CONTADO',
+      total: 12500.0,
+      fecha: '2026-10-17',
+      syncStatus: 'PENDING_SYNC',
+      isCreatedOnline: false,
+      items: [],
+    );
+
+    // 2. Instanciar SyncNotifier (como ocurre al abrir la aplicación)
+    final conn = ConnectivityNotifier();
+    final notifier = SyncNotifier(
+      syncRepository: repo,
+      connectivityNotifier: conn,
+    );
+
+    // Permitir microtasks para la resolución inicial
+    await Future.microtask(() {});
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    // 3. Debe contener las órdenes de inmediato
+    expect(notifier.localOrders.length, equals(1));
+    expect(notifier.localOrders.first.order.clienteNombre, equals('Cliente Existente'));
+  });
 }
