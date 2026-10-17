@@ -37,3 +37,18 @@ Característica: Toma de Pedidos
     Cuando el dispositivo vuelve a tener conexión a internet estable
     Entonces se debe inicializar un proceso de actualización por lotes en segundo plano (background)
     Y este proceso no debe ralentizar el equipo del usuario ni interrumpir su trabajo actual
+
+  Escenario: Edición de código y cantidad en una línea de pedido con recálculo
+    Dado que el preventista tiene productos agregados en el detalle del pedido
+    Cuando presiona el botón de edición en una fila específica
+    Y modifica el código del producto y/o la cantidad deseada
+    Entonces la línea se actualiza con los nuevos valores
+    Y el total del pedido se recalcula automáticamente en base al nuevo subtotal
+
+  Escenario: Eliminación de una línea de pedido con recálculo de totales
+    Dado que el preventista tiene varios productos agregados en el detalle del pedido
+    Cuando presiona el botón de eliminar sobre una fila
+    Y confirma la eliminación en el diálogo
+    Entonces la línea se remueve de la tabla de detalle
+    Y el total acumulado del pedido se recalcula descontando el ítem eliminado
+

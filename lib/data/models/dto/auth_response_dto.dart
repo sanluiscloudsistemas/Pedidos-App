@@ -11,6 +11,7 @@ class AuthResponse {
   final String? sisorgCodigo;
   final String? sisperId;
   final String? sisdepId;
+  final String? depositoId;
 
   AuthResponse({
     this.token,
@@ -23,6 +24,7 @@ class AuthResponse {
     this.sisorgCodigo,
     this.sisperId,
     this.sisdepId,
+    this.depositoId,
   });
 
   /// Retorna el token JWT prioritario (o la sesión como fallback).
@@ -49,8 +51,9 @@ class AuthResponse {
 
     String? sisorgId = _cleanStr(json['sisorg_id'] ?? json['sisorgId'] ?? json['organizacion_id']);
     String? sisorgCodigo = _cleanStr(json['sisorg_codigo'] ?? json['sisorgCodigo'] ?? json['organizacion']);
-    String? sisperId = _cleanStr(json['sisper_id'] ?? json['sisperId']);
-    String? sisdepId = _cleanStr(json['sisdep_id'] ?? json['sisdepId']);
+    String? sisperId = _cleanStr(json['sisper_id'] ?? json['sisperId'] ?? json['vendedor_id']);
+    String? sisdepId = _cleanStr(json['sisdep_id'] ?? json['sisdepId'] ?? json['dependencia_id']);
+    String? depositoId = _cleanStr(json['deposito_id'] ?? json['depositoId'] ?? json['comdep_id'] ?? json['comdep_id_ori']);
 
     if (resultadoStr != null && resultadoStr.trim().startsWith('{')) {
       try {
@@ -67,8 +70,9 @@ class AuthResponse {
         }
         sisorgId ??= _cleanStr(nestedJson['sisorg_id'] ?? nestedJson['sisorgId'] ?? nestedJson['organizacion_id']);
         sisorgCodigo ??= _cleanStr(nestedJson['sisorg_codigo'] ?? nestedJson['sisorgCodigo'] ?? nestedJson['organizacion']);
-        sisperId ??= _cleanStr(nestedJson['sisper_id'] ?? nestedJson['sisperId']);
-        sisdepId ??= _cleanStr(nestedJson['sisdep_id'] ?? nestedJson['sisdepId']);
+        sisperId ??= _cleanStr(nestedJson['sisper_id'] ?? nestedJson['sisperId'] ?? nestedJson['vendedor_id']);
+        sisdepId ??= _cleanStr(nestedJson['sisdep_id'] ?? nestedJson['sisdepId'] ?? nestedJson['dependencia_id']);
+        depositoId ??= _cleanStr(nestedJson['deposito_id'] ?? nestedJson['depositoId'] ?? nestedJson['comdep_id'] ?? nestedJson['comdep_id_ori']);
       } catch (_) {}
     }
 
@@ -90,6 +94,7 @@ class AuthResponse {
       sisorgCodigo: sisorgCodigo,
       sisperId: sisperId,
       sisdepId: sisdepId,
+      depositoId: depositoId,
     );
   }
 
@@ -105,6 +110,7 @@ class AuthResponse {
       'sisorg_codigo': sisorgCodigo,
       'sisper_id': sisperId,
       'sisdep_id': sisdepId,
+      'deposito_id': depositoId,
     };
   }
 }

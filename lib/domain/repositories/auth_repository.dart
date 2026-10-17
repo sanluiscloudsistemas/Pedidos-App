@@ -22,4 +22,13 @@ abstract class AuthRepository {
 
   /// Indica si la biometría está habilitada para el usuario.
   Future<bool> isBiometricEnabled();
+
+  /// Verifica si el dispositivo soporta biometría.
+  Future<bool> isBiometricAvailable();
+
+  /// Indica si es posible realizar login biométrico inmediato.
+  Future<bool> canUseBiometrics();
+
+  /// Obtiene los datos del último usuario guardado localmente.
+  Future<Map<String, String>?> getSavedUserData();
 }

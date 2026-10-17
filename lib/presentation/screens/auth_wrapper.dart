@@ -29,7 +29,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     if (!mounted) return;
 
-    if (hasSession) {
+    if (hasSession && authNotifier.currentUser != null) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),

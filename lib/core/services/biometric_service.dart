@@ -33,18 +33,20 @@ class BiometricService {
   }) async {
     try {
       final bool available = await isBiometricAvailable();
-      if (!available) return false;
+      if (!available) {
+        throw Exception('El dispositivo no cuenta con sensor biométrico o no está configurado en el sistema.');
+      }
 
       return await _auth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          biometricOnly: false,
           useErrorDialogs: true,
         ),
       );
-    } on PlatformException catch (_) {
-      return false;
+    } on PlatformException catch (e) {
+      throw Exception('Error biométrico (${e.code}): ${e.message ?? 'No se pudo verificar la huella'}');
     }
   }
 }

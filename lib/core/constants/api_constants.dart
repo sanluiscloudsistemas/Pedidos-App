@@ -5,4 +5,5 @@ class ApiEndpoints {
   static const String clientes = 'mobile/clientes';
   static const String faltantes = 'mobile/faltantes';
   static const String catalogo = 'mobile/catalogo';
+  static const String repartos = 'mobile/repartos';
 }

@@ -50,7 +50,7 @@ graph TD
 - **¿Por qué se aplica?:** Oculta los detalles de la fuente de datos (si viene de una API REST remota, de SQLite local o de una memoria caché). La interfaz de usuario solicita datos sin saber de dónde se obtienen.
 
 ### B. Patrón Caso de Uso (Use Case / Command Pattern)
-- **Implementación:** `LoginUseCase`.
+- **Implementación:** `LoginUseCase`, `LoginWithBiometricsUseCase`, `CheckSessionUseCase`, `LogoutUseCase`.
 - **¿Por qué se aplica?:** Encapsula una única operación de negocio expresable con una sola responsabilidad. Facilita la reutilización y permite probar de forma aislada la regla de negocio mediante pruebas unitarias sin depender de la UI.
 
 ### C. Patrón Inyección de Dependencias (Dependency Injection - DI)
@@ -58,8 +58,12 @@ graph TD
 - **¿Por qué se aplica?:** Desacopla la creación de objetos de su consumo. Permite reemplazar implementaciones reales por mocks en pruebas (ej: `MockApiService` o `FakeSyncRepository`).
 
 ### D. Patrón Gestor de Estado Observable (Observer Pattern / ChangeNotifier)
-- **Implementación:** `AuthNotifier`, `ConnectivityNotifier`, `SyncNotifier`.
+- **Implementación:** `AuthNotifier`, `ConnectivityNotifier`, `SyncNotifier`, `PedidosNotifier`.
 - **¿Por qué se aplica?:** Permite que los widgets de la interfaz se suscriban de forma reactiva a los cambios de estado sin necesidad de refrescar manualmente toda la pantalla ni provocar reconstrucciones innecesarias.
+
+### E. Estrategia de Autenticación Criptográfica Offline & Biometría
+- **Implementación:** [`HashUtil`](file:///c:/Projects/Frontend/flutter/preventas/lib/core/utils/hash_util.dart), [`SecureStorageService`](file:///c:/Projects/Frontend/flutter/preventas/lib/core/services/secure_storage_service.dart), [`BiometricService`](file:///c:/Projects/Frontend/flutter/preventas/lib/core/services/biometric_service.dart).
+- **¿Por qué se aplica?:** Permite al preventista iniciar sesión en zonas sin cobertura celular sin comprometer la seguridad. Las credenciales se contrastan localmente contra un hash SHA-256 con salt almacenado en el enclave seguro del sistema operativo, o se desbloquea la sesión mediante biometría nativa (huella dactilar / FaceID).
 
 ---
 
@@ -73,16 +77,18 @@ lib/
 │       └── app_styles.dart      # Estilos tipográficos y decoraciones
 ├── data/                        # Capa de Datos (Infraestructura)
 │   ├── datasources/
-│   │   ├── local/               # Base de datos Drift SQLite (AppDatabase)
+│   │   ├── local/               # Base de datos Hive (HiveService)
 │   │   └── remote/              # Cliente Dio HTTP (ApiService)
-│   ├── models/                  # Data Transfer Objects (DTOs) y mappers JSON
+│   ├── models/                  # Data Transfer Objects (DTOs), PedidoItemModel y mappers JSON
 │   └── repositories/            # Implementaciones de los contratos de dominio
 ├── domain/                      # Capa de Dominio (Corazón del Sistema)
 │   ├── entities/                # Modelos puros del negocio
 │   ├── repositories/            # Interfaces abstractas
 │   └── usecases/                # Casos de uso de negocio
 ├── presentation/                # Capa de Presentación (UI)
-│   ├── notifiers/               # State Managers (Providers / ChangeNotifiers)
-│   ├── widgets/common/          # Componentes reutilizables de UI
-│   └── screens/                 # Pantallas de la aplicación
+│   ├── notifiers/               # State Managers (AuthNotifier, SyncNotifier, PedidosNotifier)
+│   ├── widgets/
+│   │   ├── common/              # Componentes visuales genéricos
+│   │   └── pedidos/             # Componentes modulares del listado de pedidos (Tabla, Cards, Filtros, Banner)
+│   └── screens/                 # Pantallas orquestadoras limpias (MisPedidosScreen < 170 líneas)
 ```

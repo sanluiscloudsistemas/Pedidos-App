@@ -6,6 +6,8 @@ import 'package:preventa/domain/entities/user_entity.dart';
 import 'package:preventa/domain/repositories/auth_repository.dart';
 import 'package:preventa/domain/usecases/login_use_case.dart';
 import 'package:preventa/domain/usecases/check_session_use_case.dart';
+import 'package:preventa/domain/usecases/logout_use_case.dart';
+import 'package:preventa/domain/usecases/login_with_biometrics_use_case.dart';
 import 'package:preventa/presentation/notifiers/auth_notifier.dart';
 import 'package:preventa/presentation/screens/login_screen.dart';
 
@@ -37,6 +39,15 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<bool> isBiometricEnabled() async => false;
+
+  @override
+  Future<bool> isBiometricAvailable() async => false;
+
+  @override
+  Future<bool> canUseBiometrics() async => false;
+
+  @override
+  Future<Map<String, String>?> getSavedUserData() async => null;
 }
 
 void main() {
@@ -44,7 +55,14 @@ void main() {
     final fakeRepo = FakeAuthRepository();
     final loginUseCase = LoginUseCase(fakeRepo);
     final checkSessionUseCase = CheckSessionUseCase(fakeRepo);
-    final authNotifier = AuthNotifier(loginUseCase, checkSessionUseCase);
+    final logoutUseCase = LogoutUseCase(fakeRepo);
+    final loginWithBiometricsUseCase = LoginWithBiometricsUseCase(fakeRepo);
+    final authNotifier = AuthNotifier(
+      loginUseCase,
+      checkSessionUseCase,
+      logoutUseCase,
+      loginWithBiometricsUseCase,
+    );
 
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthNotifier>.value(

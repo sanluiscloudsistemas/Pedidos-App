@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../domain/repositories/sync_repository.dart';
 import 'connectivity_notifier.dart';
 
 /// Notificador y Coordinador de Sincronización Offline-First.
 /// Escucha a `ConnectivityNotifier`. Al detectar retorno a la red (`isConnected == true`),
-/// sincroniza automáticamente los pedidos pendientes de Drift SQLite con la API remota.
+/// sincroniza automáticamente los pedidos pendientes de Hive con la API remota.
 class SyncNotifier extends ChangeNotifier {
   final SyncRepository syncRepository;
   final ConnectivityNotifier connectivityNotifier;
@@ -26,16 +27,37 @@ class SyncNotifier extends ChangeNotifier {
 
   StreamSubscription<List<FullLocalOrder>>? _ordersSubscription;
   bool _wasOffline = false;
+  Timer? _periodicSyncTimer;
+  final Duration periodicSyncInterval;
+  final String? retentionParam;
 
   SyncNotifier({
     required this.syncRepository,
     required this.connectivityNotifier,
+    this.periodicSyncInterval = const Duration(minutes: 30),
+    this.retentionParam,
   }) {
     _initListeners();
+    _startPeriodicSyncTimer();
+  }
+
+  void _startPeriodicSyncTimer() {
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(periodicSyncInterval, (_) {
+      if (connectivityNotifier.isConnected) {
+        syncPendingOrdersNow();
+      }
+    });
   }
 
   void _initListeners() {
-    // 1. Escuchar cambios de la lista de pedidos en Drift en tiempo real
+    // 1. Cargar estado inicial de órdenes locales
+    syncRepository.getAllLocalOrders().then((orders) {
+      _localOrders = orders;
+      notifyListeners();
+    });
+
+    // 2. Escuchar cambios de la lista de pedidos en Hive en tiempo real
     _ordersSubscription = syncRepository.watchAllLocalOrders().listen((orders) {
       _localOrders = orders;
       notifyListeners();
@@ -45,6 +67,11 @@ class SyncNotifier extends ChangeNotifier {
     _wasOffline = !connectivityNotifier.isConnected;
 
     connectivityNotifier.addListener(_handleConnectivityChange);
+
+    // 3. Si arranca con conexión, evaluar purga diaria de la primera conexión del día
+    if (connectivityNotifier.isConnected) {
+      runDailyPurgeIfNeeded();
+    }
   }
 
   void _handleConnectivityChange() {
@@ -54,6 +81,7 @@ class SyncNotifier extends ChangeNotifier {
     if (_wasOffline && currentlyOnline) {
       _wasOffline = false;
       syncPendingOrdersNow();
+      runDailyPurgeIfNeeded();
     } else if (!currentlyOnline) {
       _wasOffline = true;
     }
@@ -61,30 +89,56 @@ class SyncNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Guarda un nuevo pedido de forma offline en Drift SQLite
+  /// Ejecuta la purga diaria de pedidos SYNCED expirados si es la primera conexión del día
+  Future<int> runDailyPurgeIfNeeded() async {
+    if (!connectivityNotifier.isConnected) return 0;
+    String? retention = retentionParam;
+    if (retention == null) {
+      try {
+        retention = dotenv.maybeGet('SYNCED_ORDERS_RETENTION') ?? '30d';
+      } catch (_) {
+        retention = '30d';
+      }
+    }
+    return syncRepository.checkAndPurgeDailySyncedOrders(retention);
+  }
+
+  /// Guarda un nuevo pedido (creado online u offline) en Hive
   Future<int> saveOrderOffline({
     required int organizacionId,
     required int clienteId,
+    String clienteNombre = '',
     required int vendedorId,
     required int repartoId,
+    String repartoNombre = '',
     required String condicionVenta,
     required double total,
     required String fecha,
+    String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     final id = await syncRepository.saveOrderOffline(
       organizacionId: organizacionId,
       clienteId: clienteId,
+      clienteNombre: clienteNombre,
       vendedorId: vendedorId,
       repartoId: repartoId,
+      repartoNombre: repartoNombre,
       condicionVenta: condicionVenta,
       total: total,
       fecha: fecha,
+      syncStatus: syncStatus,
+      isCreatedOnline: isCreatedOnline,
+      estado: estado,
+      codigo: codigo,
       items: items,
     );
 
-    // Si actualmente está online, intentar sincronizar de inmediato
-    if (connectivityNotifier.isConnected) {
+    // Si actualmente está online y el pedido quedó pendiente de sync, intentar sincronizar de inmediato
+    if (connectivityNotifier.isConnected && syncStatus == 'PENDING_SYNC') {
       syncPendingOrdersNow();
     }
 
@@ -147,6 +201,13 @@ class SyncNotifier extends ChangeNotifier {
 
   /// Dispara la sincronización manual o automática de pedidos pendientes
   Future<int> syncPendingOrdersNow() async {
+    // Bloquear sincronización si el dispositivo no tiene conexión real o está en modo offline simulado
+    if (!connectivityNotifier.isConnected) {
+      _lastSyncMessage = 'No se puede sincronizar: el dispositivo se encuentra sin conexión o en modo offline.';
+      notifyListeners();
+      return 0;
+    }
+
     if (_isSyncing) return 0;
 
     _isSyncing = true;
@@ -171,6 +232,7 @@ class SyncNotifier extends ChangeNotifier {
 
   @override
   void dispose() {
+    _periodicSyncTimer?.cancel();
     connectivityNotifier.removeListener(_handleConnectivityChange);
     _ordersSubscription?.cancel();
     super.dispose();

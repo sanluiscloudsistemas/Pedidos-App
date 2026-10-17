@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:preventa/data/datasources/local/app_database.dart';
 import 'package:preventa/domain/repositories/sync_repository.dart';
 import 'package:preventa/presentation/notifiers/connectivity_notifier.dart';
 import 'package:preventa/presentation/notifiers/sync_notifier.dart';
@@ -11,24 +10,35 @@ class FakeSyncRepository implements SyncRepository {
   Future<int> saveOrderOffline({
     required int organizacionId,
     required int clienteId,
+    String clienteNombre = '',
     required int vendedorId,
     required int repartoId,
+    String repartoNombre = '',
     required String condicionVenta,
     required double total,
     required String fecha,
+    String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     final newId = _orders.length + 1;
-    final orderData = PedidosLocalData(
+    final orderData = LocalOrderEntity(
       id: newId,
       organizacionId: organizacionId,
       clienteId: clienteId,
+      clienteNombre: clienteNombre,
       vendedorId: vendedorId,
       repartoId: repartoId,
+      repartoNombre: repartoNombre,
       condicionVenta: condicionVenta,
       total: total,
       fecha: fecha,
-      syncStatus: 'PENDING_SYNC',
+      syncStatus: syncStatus,
+      isCreatedOnline: isCreatedOnline,
+      estado: estado,
+      codigo: codigo.isNotEmpty ? codigo : 'LOC-$newId',
       createdAt: DateTime.now(),
     );
 
@@ -89,6 +99,33 @@ class FakeSyncRepository implements SyncRepository {
     String? observacion,
   }) async {
     return 1;
+  }
+
+  @override
+  Future<void> deleteOrder(int orderId) async {
+    _orders.removeWhere((o) => o.order.id == orderId);
+  }
+
+  String? _lastPurgeDate;
+
+  @override
+  Future<int> checkAndPurgeDailySyncedOrders(String? retentionParam) async {
+    final now = DateTime.now();
+    final todayString =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    if (_lastPurgeDate == todayString) return 0;
+
+    int count = 0;
+    _orders.removeWhere((o) {
+      if (o.order.syncStatus == 'SYNCED') {
+        count++;
+        return true;
+      }
+      return false;
+    });
+
+    _lastPurgeDate = todayString;
+    return count;
   }
 }
 
@@ -163,5 +200,117 @@ void main() {
 
     final pending = await syncRepository.getPendingSyncOrders();
     expect(pending.isEmpty, isTrue);
+  });
+
+  test('No permite sincronizar mediante la API si el sistema está en modo offline (simulado o real)', () async {
+    // 1. Simular modo offline
+    connectivityNotifier.toggleManualSimulatedState();
+    expect(connectivityNotifier.isConnected, isFalse);
+
+    await syncNotifier.saveOrderOffline(
+      organizacionId: 14,
+      clienteId: 555,
+      vendedorId: 23,
+      repartoId: 10,
+      condicionVenta: 'CONTADO',
+      total: 5000.0,
+      fecha: '26/09/2026',
+      items: [],
+    );
+
+    // 2. Intentar forzar sincronización manual mientras sigue offline
+    final synced = await syncNotifier.syncPendingOrdersNow();
+    expect(synced, equals(0));
+
+    // Verificar que los pedidos pendientes permanecen intactos
+    final pending = await syncRepository.getPendingSyncOrders();
+    expect(pending.length, equals(1));
+    expect(pending.first.order.syncStatus, equals('PENDING_SYNC'));
+  });
+
+  test('Guarda en base local pedidos online como SYNCED y offline como PENDING_SYNC', () async {
+    // 1. Guardar pedido online
+    await syncNotifier.saveOrderOffline(
+      organizacionId: 14,
+      clienteId: 101,
+      vendedorId: 23,
+      repartoId: 1,
+      condicionVenta: 'CONTADO',
+      total: 15000.0,
+      fecha: '26/09/2026',
+      syncStatus: 'SYNCED',
+      isCreatedOnline: true,
+      codigo: 'PED-BACKEND-101',
+      items: [],
+    );
+
+    // 2. Simular offline y guardar pedido offline
+    connectivityNotifier.toggleManualSimulatedState();
+    await syncNotifier.saveOrderOffline(
+      organizacionId: 14,
+      clienteId: 102,
+      vendedorId: 23,
+      repartoId: 2,
+      condicionVenta: 'CTA_CTE',
+      total: 8000.0,
+      fecha: '26/09/2026',
+      syncStatus: 'PENDING_SYNC',
+      isCreatedOnline: false,
+      items: [],
+    );
+
+    final allOrders = await syncRepository.getAllLocalOrders();
+    expect(allOrders.length, equals(2));
+
+    final onlineOrder = allOrders.firstWhere((o) => o.order.clienteId == 101);
+    expect(onlineOrder.order.isCreatedOnline, isTrue);
+    expect(onlineOrder.order.syncStatus, equals('SYNCED'));
+    expect(onlineOrder.order.estado, equals('PENDIENTE'));
+    expect(onlineOrder.order.codigo, equals('PED-BACKEND-101'));
+
+    final offlineOrder = allOrders.firstWhere((o) => o.order.clienteId == 102);
+    expect(offlineOrder.order.isCreatedOnline, isFalse);
+    expect(offlineOrder.order.syncStatus, equals('PENDING_SYNC'));
+    expect(offlineOrder.order.estado, equals('PENDIENTE'));
+    expect(offlineOrder.order.codigo, equals('LOC-2'));
+
+    // Solo el offline cuenta como pendiente de sincronizar
+    final pending = await syncRepository.getPendingSyncOrders();
+    expect(pending.length, equals(1));
+    expect(pending.first.order.clienteId, equals(102));
+    expect(syncNotifier.pendingSyncCount, equals(1));
+  });
+
+  test('SyncNotifier carga pedidos preexistentes inmediatamente al inicializarse sin requerir crear un nuevo pedido', () async {
+    // 1. Repositorio con órdenes preexistentes
+    final repo = FakeSyncRepository();
+    await repo.saveOrderOffline(
+      organizacionId: 1,
+      clienteId: 999,
+      clienteNombre: 'Cliente Existente',
+      vendedorId: 10,
+      repartoId: 1,
+      condicionVenta: 'CONTADO',
+      total: 12500.0,
+      fecha: '2026-10-17',
+      syncStatus: 'PENDING_SYNC',
+      isCreatedOnline: false,
+      items: [],
+    );
+
+    // 2. Instanciar SyncNotifier (como ocurre al abrir la aplicación)
+    final conn = ConnectivityNotifier();
+    final notifier = SyncNotifier(
+      syncRepository: repo,
+      connectivityNotifier: conn,
+    );
+
+    // Permitir microtasks para la resolución inicial
+    await Future.microtask(() {});
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    // 3. Debe contener las órdenes de inmediato
+    expect(notifier.localOrders.length, equals(1));
+    expect(notifier.localOrders.first.order.clienteNombre, equals('Cliente Existente'));
   });
 }

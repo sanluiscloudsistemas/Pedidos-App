@@ -16,9 +16,9 @@ import '../../screens/nuevo_pedido_wizard_screen.dart';
 class PreventaDrawer extends StatelessWidget {
   const PreventaDrawer({super.key});
 
-  void _handleLogout(BuildContext context) {
+  Future<void> _handleLogout(BuildContext context) async {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    authNotifier.logout();
+    await authNotifier.logout();
     if (context.mounted) {
       Navigator.pushAndRemoveUntil(
         context,

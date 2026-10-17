@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'sync_offline_test.dart';
 
@@ -9,12 +8,6 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     syncRepository = FakeSyncRepository();
   });
-
-  String generateRandomString(int length) {
-    const chars = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890!@#\$%^&*()_+{}|:"<>?~`-=[]\\;,./\'';
-    Random rnd = Random();
-    return String.fromCharCodes(Iterable.generate(length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
-  }
 
   test('Agente adversarial: Inyección de datos extremos y malformados en saveOrderOffline', () async {
     // Escenario 1: Valores nulos simulados, strings vacíos y números negativos

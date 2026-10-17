@@ -59,12 +59,26 @@ graph TD
 5. **[`StatusPillTag`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/widgets/common/status_pill_tag.dart):**
    - Etiquetas/Pills redondeadas con fondo suave y texto en negrita para resaltar estados (`Activo`, `En Curso`, `Pendiente`).
 
+### Componentes Modulares de Pedidos (`lib/presentation/widgets/pedidos/`):
+
+1. **[`PedidosSyncBanner`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/widgets/pedidos/pedidos_sync_banner.dart):**
+   - Banner de advertencia que gestiona de manera aislada la sincronización on-demand de pedidos guardados en Hive.
+2. **[`PedidosFilterBar`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/widgets/pedidos/pedidos_filter_bar.dart):**
+   - Buscador por texto, panel desplegable de filtros de estado/origen y botón de restablecimiento de filtros.
+3. **[`PedidosTableView`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/widgets/pedidos/pedidos_table_view.dart):**
+   - Renderizado en formato `DataTable` con scroll horizontal para tablet y escritorio.
+4. **[`PedidosCardView`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/widgets/pedidos/pedidos_card_view.dart):**
+   - Tarjetas apiladas adaptadas a pantallas móviles angostas (< 600px).
+5. **[`PedidoOriginBadge` y `PedidoStatusBadge`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/widgets/pedidos/pedido_badges.dart):**
+   - Badges visuales reutilizables para origen (`ONLINE`/`OFFLINE`) y estado comercial (`NUEVO`, `PENDIENTE`, `FINALIZADO`).
+
 ---
 
 ## 📐 3. Principios SOLID Aplicados en el Código
 
-1. **Single Responsibility Principle (SRP):** Cada widget se encarga únicamente de renderizar una porción específica de la pantalla. Los cambios de diseño en la cabecera impactan únicamente en `PreventaAppBar`.
+1. **Single Responsibility Principle (SRP):** Demostrado en la refactorización de [`MisPedidosScreen`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/screens/mis_pedidos_screen.dart) (reducida de >1.100 a <170 líneas), desacoplando los modelos hacia [`pedido_item_model.dart`](file:///c:/Projects/Frontend/flutter/preventas/lib/data/models/pedido_item_model.dart), la lógica de red/filtrado hacia [`PedidosNotifier`](file:///c:/Projects/Frontend/flutter/preventas/lib/presentation/notifiers/pedidos_notifier.dart) y la interfaz visual hacia componentes modulares independientes.
 2. **Open/Closed Principle (OCP):** Los componentes comunes aceptan parámetros configurables (`title`, `showBackButton`, `onSearch`) permitiendo extender su comportamiento sin modificar el código fuente interno.
 3. **Liskov Substitution Principle (LSP):** `SyncRepositoryImpl` puede ser sustituido por `FakeSyncRepository` en pruebas sin romper la capa de presentación.
 4. **Interface Segregation Principle (ISP):** Las interfaces de repositorio están segregadas por ámbito (`AuthRepository`, `SyncRepository`), evitando obligar a un notificador a depender de métodos de autenticación que no utiliza.
 5. **Dependency Inversion Principle (DIP):** Las pantallas y notificadores dependen de abstracciones (`SyncRepository`), no de implementaciones de bajo nivel.
+

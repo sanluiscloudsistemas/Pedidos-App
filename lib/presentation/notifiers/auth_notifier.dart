@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../domain/usecases/login_use_case.dart';
 import '../../domain/usecases/check_session_use_case.dart';
+import '../../domain/usecases/logout_use_case.dart';
+import '../../domain/usecases/login_with_biometrics_use_case.dart';
 import '../../domain/entities/user_entity.dart';
 
 class AuthNotifier extends ChangeNotifier {
   final LoginUseCase _loginUseCase;
   final CheckSessionUseCase _checkSessionUseCase;
+  final LogoutUseCase? _logoutUseCase;
+  final LoginWithBiometricsUseCase? _loginWithBiometricsUseCase;
 
-  AuthNotifier(this._loginUseCase, this._checkSessionUseCase);
+  AuthNotifier(
+    this._loginUseCase,
+    this._checkSessionUseCase, [
+    this._logoutUseCase,
+    this._loginWithBiometricsUseCase,
+  ]);
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -42,10 +51,64 @@ class AuthNotifier extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<bool> loginWithBiometrics() async {
+    if (_loginWithBiometricsUseCase == null) {
+      _errorMessage = 'Biometría no configurada';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _currentUser = await _loginWithBiometricsUseCase.execute();
+      _isLoading = false;
+      if (_currentUser == null) {
+        notifyListeners();
+        return false;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> canUseBiometrics() async {
+    if (_loginWithBiometricsUseCase == null) return false;
+    try {
+      return await _loginWithBiometricsUseCase.canUseBiometrics();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> isBiometricAvailable() async {
+    if (_loginWithBiometricsUseCase == null) return false;
+    try {
+      return await _loginWithBiometricsUseCase.isBiometricAvailable();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Map<String, String>?> getSavedUserData() async {
+    try {
+      return await _checkSessionUseCase.getSavedUserData();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -60,15 +123,19 @@ class AuthNotifier extends ChangeNotifier {
       notifyListeners();
       return _currentUser != null;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
+    try {
+      await _logoutUseCase?.execute();
+    } catch (_) {}
     _currentUser = null;
     notifyListeners();
   }
 }
+
