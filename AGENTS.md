@@ -16,4 +16,20 @@
 - Regla obligatoria: Ejecutar el análisis estático (`flutter analyze`), la suite de pruebas (`flutter test`) y la verificación de compilación (`assembleDebug` / `build bundle`) para garantizar que no existan errores de miembros no encontrados, sintaxis o ensamblado antes de dar por completada una tarea.
 - Consultar la especificación completa en [.agents/skills/flutter-qa-verifier/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/flutter-qa-verifier/SKILL.md) y las directrices en [.agents/rules/regla_qa_verificacion_post_desarrollo.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/rules/regla_qa_verificacion_post_desarrollo.md).
 
+## Agente Adversarial de Planificación (Adversarial Planner)
+- Responsable de auditar y cuestionar exhaustivamente planes técnicos y de arquitectura antes de comenzar la codificación.
+- Identifica asunciones no validadas, brechas en casos borde (offline/online, concurrencia, sincronización), sobreingeniería y deuda técnica.
+- Consultar la especificación completa en [.agents/skills/adversarial-planner/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/adversarial-planner/SKILL.md).
+
+## Agente Adversarial de Código (Adversarial Code Reviewer)
+- Responsable de auditar el código desarrollado bajo la premisa de hallar defectos ocultos, fugas de memoria y debilidades estructurales.
+- Evalúa el cumplimiento estricto de Null Safety, ciclo de vida de recursos Flutter (`dispose`), rendimiento de renderizado y separación de capas.
+- Consultar la especificación completa en [.agents/skills/adversarial-code-reviewer/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/adversarial-code-reviewer/SKILL.md).
+
+## Agente Adversarial de Aprobación (Adversarial Approver)
+- Actúa como gatekeeper para validar el cumplimiento riguroso de criterios de aceptación BDD, ausencia de regresiones e integridad de pruebas.
+- Emite veredicto formal vinculante (`RECHAZADO`, `APROBADO CONDICIONAL` o `APROBADO`) previo a considerar concluida cualquier implementación.
+- Consultar la especificación completa en [.agents/skills/adversarial-approver/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/adversarial-approver/SKILL.md).
+
+
 

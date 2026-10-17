@@ -29,9 +29,6 @@ class PedidosFilterBar extends StatelessWidget {
     final finalizadoCount = allPedidos
         .where((p) => p.estado.toUpperCase() == 'FINALIZADO')
         .length;
-    final nuevoCount = allPedidos
-        .where((p) => p.estado.toUpperCase() == 'NUEVO')
-        .length;
     final pendienteCount = allPedidos
         .where((p) => p.estado.toUpperCase() == 'PENDIENTE')
         .length;
@@ -84,21 +81,28 @@ class PedidosFilterBar extends StatelessWidget {
                 dense: true,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(
-                  'NUEVO ($nuevoCount)',
-                  style: const TextStyle(fontSize: 13),
-                ),
-                value: pedidosNotifier.filterNuevo,
-                onChanged: (val) => pedidosNotifier.setFilterNuevo(val ?? false),
-              ),
-              CheckboxListTile(
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
                   'PENDIENTE ($pendienteCount)',
                   style: const TextStyle(fontSize: 13),
                 ),
                 value: pedidosNotifier.filterPendiente,
                 onChanged: (val) => pedidosNotifier.setFilterPendiente(val ?? false),
+              ),
+              const Divider(height: 1, color: AppColors.cardBorder),
+              CheckboxListTile(
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Row(
+                  children: [
+                    Icon(Icons.calendar_month, size: 16, color: AppColors.primaryRed),
+                    SizedBox(width: 6),
+                    Text(
+                      'ÚLTIMO MES (30 DÍAS)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+                value: pedidosNotifier.filterUltimoMes,
+                onChanged: (val) => pedidosNotifier.setFilterUltimoMes(val ?? false),
               ),
               const Divider(height: 1, color: AppColors.cardBorder),
               CheckboxListTile(

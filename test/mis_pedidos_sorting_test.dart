@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:preventas/presentation/screens/mis_pedidos_screen.dart';
+import 'package:preventa/core/utils/date_formatter.dart';
+import 'package:preventa/presentation/screens/mis_pedidos_screen.dart';
 
 void main() {
   group('PedidoItemModel ordenamiento descendente por fecha de creación', () {
@@ -17,7 +18,7 @@ void main() {
         cliente: 'Cliente B',
         fechaGeneracion: '22/09/2026 15:30',
         monto: 250.0,
-        estado: 'NUEVO',
+        estado: 'PENDIENTE',
       );
 
       final pedidoReciente = const PedidoItemModel(
@@ -25,7 +26,7 @@ void main() {
         cliente: 'Cliente C',
         fechaGeneracion: '26/09/2026 12:00',
         monto: 500.0,
-        estado: 'NUEVO',
+        estado: 'PENDIENTE',
         isOffline: true,
       );
 
@@ -51,7 +52,7 @@ void main() {
         'cliente': 'Cliente B',
         'fecha_de_generacion': '2026-09-24 15:30:00',
         'monto': 200.0,
-        'estado': 'NUEVO',
+        'estado': 'PENDIENTE',
       });
 
       final pedidoRecienteOffline = const PedidoItemModel(
@@ -59,7 +60,7 @@ void main() {
         cliente: 'Cliente Offline',
         fechaGeneracion: '26 SEP 2026',
         monto: 300.0,
-        estado: 'NUEVO',
+        estado: 'PENDIENTE',
         isOffline: true,
       );
 
@@ -78,7 +79,7 @@ void main() {
         cliente: 'Cliente 1',
         fechaGeneracion: '26/09/2026 10:00',
         monto: 100.0,
-        estado: 'NUEVO',
+        estado: 'PENDIENTE',
       );
 
       final pedido2 = const PedidoItemModel(
@@ -87,7 +88,7 @@ void main() {
         cliente: 'Cliente 2',
         fechaGeneracion: '26/09/2026 10:00',
         monto: 100.0,
-        estado: 'NUEVO',
+        estado: 'PENDIENTE',
       );
 
       final lista = [pedido1, pedido2];
@@ -113,7 +114,7 @@ void main() {
         cliente: 'Cliente Offline',
         fechaGeneracion: '26/09/2026 12:00:45',
         monto: 2500.0,
-        estado: 'NUEVO',
+        estado: 'PENDIENTE',
         isOffline: true,
       );
 

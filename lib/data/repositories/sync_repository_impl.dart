@@ -28,7 +28,8 @@ class SyncRepositoryImpl implements SyncRepository {
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
     bool isCreatedOnline = false,
-    String estado = 'NUEVO',
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     return hiveService.saveOrder(
@@ -44,6 +45,7 @@ class SyncRepositoryImpl implements SyncRepository {
       syncStatus: syncStatus,
       isCreatedOnline: isCreatedOnline,
       estado: estado,
+      codigo: codigo,
       items: items,
     );
   }
@@ -137,7 +139,7 @@ class SyncRepositoryImpl implements SyncRepository {
             'fecha': DateFormatter.formatOracleTimestamp(fullOrder.order.createdAt),
             'condicionventa': _mapCondicionVenta(fullOrder.order.condicionVenta),
             'total': fullOrder.order.total,
-            'estado': fullOrder.order.estado.isNotEmpty ? fullOrder.order.estado : 'NUEVO',
+            'estado': fullOrder.order.estado.isNotEmpty ? fullOrder.order.estado : 'PENDIENTE',
           },
           'items': fullOrder.items.map((it) => {
             'producto_codigo': it.productoId.toString(),
@@ -148,11 +150,18 @@ class SyncRepositoryImpl implements SyncRepository {
           }).toList(),
         };
 
-        await apiService.postPedido(payload);
+        final response = await apiService.postPedido(payload);
+
+        String? remoteCodigo;
+        if (response.data is Map) {
+          final data = response.data as Map;
+          remoteCodigo = (data['CODIGO'] ?? data['codigo'] ?? data['pedido_id'] ?? data['id'])?.toString();
+        }
 
         await hiveService.updateOrderStatus(
           fullOrder.order.id,
           'SYNCED',
+          codigo: remoteCodigo,
         );
         syncedCount++;
       } catch (e) {

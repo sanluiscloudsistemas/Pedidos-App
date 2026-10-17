@@ -178,7 +178,7 @@ class PreventaAppBar extends StatelessWidget implements PreferredSizeWidget {
                 content: Text(
                   activeConnected
                       ? 'Conexión activa: Sincronizando datos con el servidor...'
-                      : 'Modo Offline: Sin conexión a Internet. Los cambios se guardarán localmente.',
+                      : 'Modo sin conexión: Los cambios se guardarán en el dispositivo y se sincronizarán al reconectar.',
                 ),
                 duration: const Duration(seconds: 3),
                 action: kDebugMode

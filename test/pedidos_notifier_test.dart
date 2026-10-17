@@ -1,8 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:preventas/data/datasources/remote/api_service.dart';
-import 'package:preventas/data/models/pedido_item_model.dart';
-import 'package:preventas/domain/repositories/sync_repository.dart';
-import 'package:preventas/presentation/notifiers/pedidos_notifier.dart';
+import 'package:preventa/data/datasources/remote/api_service.dart';
+import 'package:preventa/domain/repositories/sync_repository.dart';
+import 'package:preventa/presentation/notifiers/pedidos_notifier.dart';
 
 void main() {
   group('PedidosNotifier pruebas de lógica de filtrado y combinación', () {
@@ -27,7 +26,7 @@ void main() {
             fecha: '26 SEP 2026 10:00:00',
             syncStatus: 'PENDING_SYNC',
             isCreatedOnline: false,
-            estado: 'NUEVO',
+            estado: 'PENDIENTE',
             createdAt: DateTime(2026, 9, 26, 10, 0, 0),
           ),
           items: [
@@ -48,7 +47,7 @@ void main() {
       final combined = notifier.getCombinedPedidos(localOrders);
       expect(combined.length, equals(1));
       expect(combined.first.codigo, equals('LOC-1'));
-      expect(combined.first.estado, equals('NUEVO'));
+      expect(combined.first.estado, equals('PENDIENTE'));
       expect(combined.first.isOffline, isTrue);
       expect(combined.first.items.length, equals(1));
       expect(combined.first.items.first.codigo, equals('PROD-101'));
@@ -69,7 +68,7 @@ void main() {
             fecha: '26 SEP 2026 10:00:00',
             syncStatus: 'PENDING_SYNC',
             isCreatedOnline: false,
-            estado: 'NUEVO',
+            estado: 'PENDIENTE',
             createdAt: DateTime(2026, 9, 26, 10, 0, 0),
           ),
           items: [],
@@ -87,7 +86,7 @@ void main() {
             fecha: '26 SEP 2026 11:00:00',
             syncStatus: 'SYNCED',
             isCreatedOnline: true,
-            estado: 'NUEVO',
+            estado: 'PENDIENTE',
             createdAt: DateTime(2026, 9, 26, 11, 0, 0),
           ),
           items: [],
@@ -120,7 +119,7 @@ void main() {
             fecha: '26 SEP 2026 10:00:00',
             syncStatus: 'PENDING_SYNC',
             isCreatedOnline: false,
-            estado: 'NUEVO',
+            estado: 'PENDIENTE',
             createdAt: DateTime(2026, 9, 26, 10, 0, 0),
           ),
           items: [],
@@ -138,7 +137,7 @@ void main() {
             fecha: '26 SEP 2026 11:00:00',
             syncStatus: 'SYNCED',
             isCreatedOnline: true,
-            estado: 'NUEVO',
+            estado: 'PENDIENTE',
             createdAt: DateTime(2026, 9, 26, 11, 0, 0),
           ),
           items: [],
@@ -161,6 +160,85 @@ void main() {
       notifier.resetFilters();
       filtered = notifier.getFilteredPedidos(localOrders);
       expect(filtered.length, equals(2));
+    });
+
+    test('Filtra pedidos por preventista conectado y último mes ordenados descendentemente', () {
+      final now = DateTime.now();
+      final fechaReciente = now.subtract(const Duration(days: 2));
+      final fechaMesPasado = now.subtract(const Duration(days: 45));
+
+      final apiService = ApiService();
+      apiService.setOrganizationInfo(sisperId: '100');
+      final customNotifier = PedidosNotifier(apiService: apiService);
+
+      final localOrders = [
+        FullLocalOrder(
+          order: LocalOrderEntity(
+            id: 1,
+            organizacionId: 14,
+            clienteId: 50,
+            clienteNombre: 'Cliente Preventista 100 Reciente',
+            vendedorId: 100,
+            repartoId: 1,
+            condicionVenta: 'CONTADO',
+            total: 1500.0,
+            fecha: '${fechaReciente.day} OCT ${fechaReciente.year} 10:00:00',
+            syncStatus: 'PENDING_SYNC',
+            isCreatedOnline: false,
+            estado: 'PENDIENTE',
+            createdAt: fechaReciente,
+          ),
+          items: [],
+        ),
+        FullLocalOrder(
+          order: LocalOrderEntity(
+            id: 2,
+            organizacionId: 14,
+            clienteId: 51,
+            clienteNombre: 'Cliente Preventista 100 Antiguo',
+            vendedorId: 100,
+            repartoId: 1,
+            condicionVenta: 'CONTADO',
+            total: 2500.0,
+            fecha: '${fechaMesPasado.day} AGO ${fechaMesPasado.year} 10:00:00',
+            syncStatus: 'PENDING_SYNC',
+            isCreatedOnline: false,
+            estado: 'PENDIENTE',
+            createdAt: fechaMesPasado,
+          ),
+          items: [],
+        ),
+        FullLocalOrder(
+          order: LocalOrderEntity(
+            id: 3,
+            organizacionId: 14,
+            clienteId: 52,
+            clienteNombre: 'Cliente Otro Preventista',
+            vendedorId: 999,
+            repartoId: 1,
+            condicionVenta: 'CONTADO',
+            total: 3000.0,
+            fecha: '${fechaReciente.day} OCT ${fechaReciente.year} 11:00:00',
+            syncStatus: 'PENDING_SYNC',
+            isCreatedOnline: false,
+            estado: 'PENDIENTE',
+            createdAt: fechaReciente,
+          ),
+          items: [],
+        ),
+      ];
+
+      // Con filtro de último mes activo (por defecto), solo debe figurar el pedido reciente del vendedor 100
+      final filtrados = customNotifier.getFilteredPedidos(localOrders);
+      expect(filtrados.length, equals(1));
+      expect(filtrados.first.cliente, equals('Cliente Preventista 100 Reciente'));
+
+      // Desactivando filtro de último mes, deben figurar ambos pedidos del preventista 100 ordenados descendentemente
+      customNotifier.toggleFilterUltimoMes();
+      final todosDelPreventista = customNotifier.getFilteredPedidos(localOrders);
+      expect(todosDelPreventista.length, equals(2));
+      expect(todosDelPreventista.first.cliente, equals('Cliente Preventista 100 Reciente'));
+      expect(todosDelPreventista.last.cliente, equals('Cliente Preventista 100 Antiguo'));
     });
   });
 }

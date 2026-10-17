@@ -25,10 +25,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuth() async {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
+    final hasSession = await authNotifier.checkSession();
 
     if (!mounted) return;
 
-    if (authNotifier.currentUser != null) {
+    if (hasSession && authNotifier.currentUser != null) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),

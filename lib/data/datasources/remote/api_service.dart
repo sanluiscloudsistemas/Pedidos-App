@@ -7,7 +7,7 @@ import '../../models/dto/auth_response_dto.dart';
 class ApiService {
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: dotenv.get('BASE_URL'),
+      baseUrl: dotenv.isInitialized ? (dotenv.maybeGet('BASE_URL') ?? 'http://localhost') : 'http://localhost',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
     ),
@@ -23,11 +23,12 @@ class ApiService {
   String? get currentAuthToken => _authToken;
   String? get currentSisorgId => _sisorgId;
   String? get currentSisorgCodigo => _sisorgCodigo;
+  String? get currentSisperId => _sisperId ?? getSisperIdFromToken();
   String? get currentDepositoId => _depositoId;
-  String? get sisorgId => _sisorgId ?? _sisorgCodigo ?? getSisorgIdFromToken() ?? dotenv.maybeGet('SISORG_CODIGO') ?? '14';
-  String? get sisperId => _sisperId ?? getSisperIdFromToken() ?? dotenv.maybeGet('SISPER_ID') ?? '19565';
-  String? get sisdepId => _sisdepId ?? getSisdepIdFromToken() ?? dotenv.maybeGet('SISDEP_ID') ?? sisperId;
-  String? get depositoId => _depositoId ?? getDepositoIdFromToken() ?? sisdepId ?? dotenv.maybeGet('DEPOSITO_ID');
+  String? get sisorgId => _sisorgId ?? _sisorgCodigo ?? getSisorgIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISORG_CODIGO') : null) ?? '14';
+  String? get sisperId => _sisperId ?? getSisperIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISPER_ID') : null) ?? '19565';
+  String? get sisdepId => _sisdepId ?? getSisdepIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISDEP_ID') : null) ?? sisperId;
+  String? get depositoId => _depositoId ?? getDepositoIdFromToken() ?? sisdepId ?? (dotenv.isInitialized ? dotenv.maybeGet('DEPOSITO_ID') : null);
 
   /// Asigna el token JWT en las cabeceras de todas las solicitudes de Dio.
   void setAuthToken(String? token) {
@@ -262,12 +263,14 @@ class ApiService {
           getSisorgIdFromToken() ??
           dotenv.maybeGet('SISORG_CODIGO');
 
+      final vendId = sisperId ?? this.sisperId;
+
       final headers = <String, dynamic>{};
       if (orgId != null && orgId.toString().isNotEmpty) {
         headers['sisorg_id'] = orgId;
       }
-      if (sisperId != null && sisperId.toString().isNotEmpty) {
-        headers['sisper_id'] = sisperId;
+      if (vendId != null && vendId.toString().isNotEmpty) {
+        headers['sisper_id'] = vendId;
       }
 
       return await _dio.get(
@@ -275,10 +278,10 @@ class ApiService {
         options: Options(headers: headers),
         queryParameters: {
           'sisorg_id': orgId,
-          if (sisperId != null) 'sisper_id': sisperId,
+          if (vendId != null) 'sisper_id': vendId,
           'offset': offset,
           'limit': limit,
-        },
+        }..removeWhere((key, value) => value == null),
       );
     } on DioException catch (e) {
       throw Exception('Error al obtener pedidos: ${e.message}');

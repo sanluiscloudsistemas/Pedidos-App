@@ -110,7 +110,8 @@ class SyncNotifier extends ChangeNotifier {
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
     bool isCreatedOnline = false,
-    String estado = 'NUEVO',
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     final id = await syncRepository.saveOrderOffline(
@@ -126,6 +127,7 @@ class SyncNotifier extends ChangeNotifier {
       syncStatus: syncStatus,
       isCreatedOnline: isCreatedOnline,
       estado: estado,
+      codigo: codigo,
       items: items,
     );
 

@@ -19,7 +19,8 @@ class FakeSyncRepository implements SyncRepository {
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
     bool isCreatedOnline = false,
-    String estado = 'NUEVO',
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     final newId = _orders.length + 1;
@@ -37,6 +38,7 @@ class FakeSyncRepository implements SyncRepository {
       syncStatus: syncStatus,
       isCreatedOnline: isCreatedOnline,
       estado: estado,
+      codigo: codigo.isNotEmpty ? codigo : 'LOC-$newId',
       createdAt: DateTime.now(),
     );
 
@@ -238,10 +240,12 @@ void main() {
       fecha: '26/09/2026',
       syncStatus: 'SYNCED',
       isCreatedOnline: true,
+      codigo: 'PED-BACKEND-101',
       items: [],
     );
 
-    // 2. Guardar pedido offline
+    // 2. Simular offline y guardar pedido offline
+    connectivityNotifier.toggleManualSimulatedState();
     await syncNotifier.saveOrderOffline(
       organizacionId: 14,
       clienteId: 102,
@@ -261,12 +265,14 @@ void main() {
     final onlineOrder = allOrders.firstWhere((o) => o.order.clienteId == 101);
     expect(onlineOrder.order.isCreatedOnline, isTrue);
     expect(onlineOrder.order.syncStatus, equals('SYNCED'));
-    expect(onlineOrder.order.estado, equals('NUEVO'));
+    expect(onlineOrder.order.estado, equals('PENDIENTE'));
+    expect(onlineOrder.order.codigo, equals('PED-BACKEND-101'));
 
     final offlineOrder = allOrders.firstWhere((o) => o.order.clienteId == 102);
     expect(offlineOrder.order.isCreatedOnline, isFalse);
     expect(offlineOrder.order.syncStatus, equals('PENDING_SYNC'));
-    expect(offlineOrder.order.estado, equals('NUEVO'));
+    expect(offlineOrder.order.estado, equals('PENDIENTE'));
+    expect(offlineOrder.order.codigo, equals('LOC-2'));
 
     // Solo el offline cuenta como pendiente de sincronizar
     final pending = await syncRepository.getPendingSyncOrders();

@@ -99,9 +99,8 @@ sequenceDiagram
 La aplicación mantiene una estricta separación de responsabilidades entre el ciclo de vida comercial del pedido y su estado de transporte:
 
 - **Estados de Negocio (Backend / Oracle APEX):**
-  - `'NUEVO'`: Estado inicial asignado a todo pedido recién creado por el preventista.
-  - `'PENDIENTE'`: Pedido en curso o en espera de validación administrativa.
-  - `'FINALIZADO'`: Pedido despachado, facturado o cerrado administrativamente.
+  - `'PENDIENTE'`: Estado inicial asignado tanto en pedidos online como offline al crearse en el dispositivo móvil.
+  - `'FINALIZADO'`: Estado comercial alcanzado tras el procesamiento y cierre administrativo del pedido en el backend (no se altera desde la app móvil).
 - **Estados de Sincronización Local (Móvil):**
   - `'SYNCED'` / `'ONLINE'`: Pedido transmitido exitosamente a la API remota.
   - `'PENDING_SYNC'` / `'OFFLINE'`: Pedido creado en el dispositivo sin conexión, almacenado localmente y en espera de conexión para ser enviado automáticamente.

@@ -299,7 +299,7 @@ class PedidoItemModel {
 
     final estadoVal = json['estado']?.toString().trim() ??
         json['ESTADO']?.toString().trim() ??
-        'NUEVO';
+        'PENDIENTE';
 
     final condVenta = json['condicion_venta']?.toString().trim() ??
         json['CONDICION_VENTA']?.toString().trim() ??

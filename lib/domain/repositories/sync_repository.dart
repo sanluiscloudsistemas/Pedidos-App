@@ -15,6 +15,7 @@ class LocalOrderEntity {
   final DateTime createdAt;
   final bool isCreatedOnline;
   final String estado;
+  final String codigo;
 
   const LocalOrderEntity({
     required this.id,
@@ -31,7 +32,8 @@ class LocalOrderEntity {
     this.syncErrorMessage,
     required this.createdAt,
     this.isCreatedOnline = false,
-    this.estado = 'NUEVO',
+    this.estado = 'PENDIENTE',
+    this.codigo = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -51,6 +53,7 @@ class LocalOrderEntity {
       'createdAt': createdAt.toIso8601String(),
       'isCreatedOnline': isCreatedOnline,
       'estado': estado,
+      'codigo': codigo,
     };
   }
 
@@ -75,7 +78,8 @@ class LocalOrderEntity {
           ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
       isCreatedOnline: createdOnline,
-      estado: map['estado']?.toString() ?? 'NUEVO',
+      estado: map['estado']?.toString() ?? 'PENDIENTE',
+      codigo: map['codigo']?.toString() ?? '',
     );
   }
 
@@ -84,6 +88,7 @@ class LocalOrderEntity {
     String? syncErrorMessage,
     bool? isCreatedOnline,
     String? estado,
+    String? codigo,
   }) {
     return LocalOrderEntity(
       id: id,
@@ -101,6 +106,7 @@ class LocalOrderEntity {
       createdAt: createdAt,
       isCreatedOnline: isCreatedOnline ?? this.isCreatedOnline,
       estado: estado ?? this.estado,
+      codigo: codigo ?? this.codigo,
     );
   }
 }
@@ -184,7 +190,8 @@ abstract class SyncRepository {
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
     bool isCreatedOnline = false,
-    String estado = 'NUEVO',
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   });
 

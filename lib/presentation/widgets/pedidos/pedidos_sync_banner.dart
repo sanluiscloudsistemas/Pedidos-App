@@ -56,7 +56,7 @@ class PedidosSyncBanner extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                        'No es posible sincronizar: el dispositivo se encuentra offline o sin conexión.',
+                        'No es posible sincronizar: no hay conexión a internet en este momento.',
                       ),
                       backgroundColor: AppColors.warningOrange,
                     ),

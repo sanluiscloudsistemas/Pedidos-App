@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../../core/utils/retention_calculator.dart';
 import '../../data/datasources/remote/api_service.dart';
 import '../../data/models/pedido_item_model.dart';
 import '../../domain/repositories/sync_repository.dart';
@@ -24,6 +26,7 @@ class PedidosNotifier extends ChangeNotifier {
   bool _filterPendiente = false;
   bool _filterSoloOffline = false;
   bool _filterSoloOnline = false;
+  bool _filterUltimoMes = true;
 
   PedidosNotifier({
     required this.apiService,
@@ -47,16 +50,17 @@ class PedidosNotifier extends ChangeNotifier {
   bool get filterPendiente => _filterPendiente;
   bool get filterSoloOffline => _filterSoloOffline;
   bool get filterSoloOnline => _filterSoloOnline;
+  bool get filterUltimoMes => _filterUltimoMes;
 
   bool get hasActiveStatusFilters =>
-      _filterFinalizado || _filterNuevo || _filterPendiente;
+      _filterFinalizado || _filterPendiente;
 
   bool get hasAnyActiveFilter =>
       _filterFinalizado ||
-      _filterNuevo ||
       _filterPendiente ||
       _filterSoloOffline ||
       _filterSoloOnline ||
+      !_filterUltimoMes ||
       _searchQuery.isNotEmpty;
 
   // Modificadores de filtros
@@ -108,12 +112,23 @@ class PedidosNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleFilterUltimoMes() {
+    _filterUltimoMes = !_filterUltimoMes;
+    notifyListeners();
+  }
+
+  void setFilterUltimoMes(bool val) {
+    _filterUltimoMes = val;
+    notifyListeners();
+  }
+
   void resetFilters() {
     _filterFinalizado = false;
     _filterNuevo = false;
     _filterPendiente = false;
     _filterSoloOffline = false;
     _filterSoloOnline = false;
+    _filterUltimoMes = true;
     _searchQuery = '';
     notifyListeners();
   }
@@ -175,12 +190,20 @@ class PedidosNotifier extends ChangeNotifier {
   /// Combina los pedidos de la base local Hive con los pedidos remotos de la API,
   /// asociando ítems y evitando duplicaciones.
   List<PedidoItemModel> getCombinedPedidos(List<FullLocalOrder> localOrders) {
+    final currentVendedorId = int.tryParse(apiService.currentSisperId ?? '');
+
     final localItems = localOrders.where((full) {
+      // Filtrar pedidos locales que pertenezcan a otro preventista
+      if (currentVendedorId != null && full.order.vendedorId > 0 && full.order.vendedorId != currentVendedorId) {
+        return false;
+      }
+
       // Si la orden ya se encuentra en los pedidos remotos, no duplicarla
       final existsInRemote = _pedidosRemotos.any((remoto) {
         if (remoto.codigo.isNotEmpty &&
             (remoto.codigo == full.order.id.toString() ||
-             remoto.codigo == 'LOC-${full.order.id}')) {
+             remoto.codigo == 'LOC-${full.order.id}' ||
+             (full.order.codigo.isNotEmpty && remoto.codigo == full.order.codigo))) {
           return true;
         }
         if (remoto.id != null && remoto.id == full.order.id.toString()) {
@@ -196,7 +219,7 @@ class PedidosNotifier extends ChangeNotifier {
       return !existsInRemote;
     }).map((full) {
       final isOfflineOrder = !full.order.isCreatedOnline && full.order.syncStatus != 'SYNCED';
-      final estadoComercial = full.order.estado.isNotEmpty ? full.order.estado : 'NUEVO';
+      final estadoComercial = full.order.estado.isNotEmpty ? full.order.estado : 'PENDIENTE';
       final mappedItems = full.items.map((it) {
         final cod = it.productoCodigo.isNotEmpty ? it.productoCodigo : it.productoId.toString();
         final des = it.descripcion.isNotEmpty ? it.descripcion : 'Producto #$cod';
@@ -218,10 +241,14 @@ class PedidosNotifier extends ChangeNotifier {
           ? full.order.repartoNombre
           : (full.order.repartoId > 0 ? 'Reparto ID: ${full.order.repartoId}' : '');
 
+      final codigoDisplay = full.order.codigo.isNotEmpty
+          ? full.order.codigo
+          : 'LOC-${full.order.id}';
+
       return PedidoItemModel(
         fechaGeneracion: full.order.fecha,
         fechaCreacion: full.order.createdAt,
-        codigo: 'LOC-${full.order.id}',
+        codigo: codigoDisplay,
         cliente: cliText,
         monto: full.order.total,
         estado: estadoComercial,
@@ -242,7 +269,8 @@ class PedidosNotifier extends ChangeNotifier {
           if (loc == null) return false;
           if (remoto.codigo.isNotEmpty &&
               (remoto.codigo == loc.order.id.toString() ||
-               remoto.codigo == 'LOC-${loc.order.id}')) {
+               remoto.codigo == 'LOC-${loc.order.id}' ||
+               (loc.order.codigo.isNotEmpty && remoto.codigo == loc.order.codigo))) {
             return true;
           }
           if (remoto.id != null && remoto.id == loc.order.id.toString()) {
@@ -298,10 +326,21 @@ class PedidosNotifier extends ChangeNotifier {
       if (_filterSoloOffline && !p.isOffline) return false;
       if (_filterSoloOnline && p.isOffline) return false;
 
+      // Filtro por Fecha: Último mes
+      if (_filterUltimoMes) {
+        final cutoff = RetentionCalculator.calculateCutoffDate(
+          from: DateTime.now(),
+          retention: dotenv.isInitialized ? (dotenv.maybeGet('SYNCED_ORDERS_RETENTION') ?? '30d') : '30d',
+        );
+        final date = p.effectiveFechaGeneracion;
+        if (date.millisecondsSinceEpoch > 0 && date.isBefore(cutoff)) {
+          return false;
+        }
+      }
+
       if (!hasActiveStatusFilters) return true;
 
       final matchState = (_filterFinalizado && p.estado.toUpperCase() == 'FINALIZADO') ||
-          (_filterNuevo && p.estado.toUpperCase() == 'NUEVO') ||
           (_filterPendiente && p.estado.toUpperCase() == 'PENDIENTE');
 
       return matchState;

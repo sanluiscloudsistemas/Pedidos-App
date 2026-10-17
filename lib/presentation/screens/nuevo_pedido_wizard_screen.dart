@@ -9,6 +9,7 @@ import '../notifiers/sync_notifier.dart';
 import '../widgets/common/preventa_app_bar.dart';
 import '../widgets/common/preventa_drawer.dart';
 import 'mis_clientes_screen.dart';
+import 'catalogo_screen.dart';
 
 /// Modelo borrador para un Item de Pedido
 class OrderItemDraft {
@@ -27,6 +28,22 @@ class OrderItemDraft {
     required this.precioUnitario,
     this.descuento = 0.0,
   });
+
+  OrderItemDraft copyWith({
+    String? codigo,
+    String? descripcion,
+    int? cantidad,
+    double? precioUnitario,
+    double? descuento,
+  }) {
+    return OrderItemDraft(
+      codigo: codigo ?? this.codigo,
+      descripcion: descripcion ?? this.descripcion,
+      cantidad: cantidad ?? this.cantidad,
+      precioUnitario: precioUnitario ?? this.precioUnitario,
+      descuento: descuento ?? this.descuento,
+    );
+  }
 }
 
 /// Modelo para una opción de Reparto obtenida de la API
@@ -106,6 +123,9 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   final TextEditingController _precioController = TextEditingController(text: '10000.00');
   final TextEditingController _descuentoController = TextEditingController(text: '0');
 
+  // Catálogo de productos para búsqueda y autocompletado
+  List<ProductoCatalogoModel> _catalogoProductos = [];
+
   // Paso 3 State
   String? _selectedReparto;
   List<RepartoOption> _repartosModelList = [];
@@ -146,6 +166,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
     super.initState();
     _cargarClientes();
     _cargarRepartos();
+    _cargarCatalogo();
   }
 
   @override
@@ -248,6 +269,135 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
     }
   }
 
+  Future<void> _cargarCatalogo() async {
+    try {
+      final apiService = context.read<ApiService>();
+      final response = await apiService.getCatalogo();
+
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['items'] is List) {
+        final List itemsJson = data['items'];
+        final productos = itemsJson
+            .map((item) => ProductoCatalogoModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _catalogoProductos = productos;
+          });
+        }
+      }
+    } catch (_) {
+      // Si falla o no hay conexión, se mantiene entrada manual sin interrumpir el flujo
+    }
+  }
+
+  void _abrirPopupBusquedaProducto(
+    BuildContext context,
+    void Function(ProductoCatalogoModel) onSelected,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final query = searchQuery.toLowerCase().trim();
+            final filtrados = _catalogoProductos.where((p) {
+              if (query.isEmpty) return true;
+              return p.codigo.toLowerCase().contains(query) ||
+                  p.descripcion.toLowerCase().contains(query) ||
+                  p.categoria.toLowerCase().contains(query);
+            }).toList();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: 500,
+                height: 550,
+                child: Column(
+                  children: [
+                    Container(
+                      color: AppColors.primaryRed,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Seleccionar Producto',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.pop(dialogContext),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por código, descripción o categoría...',
+                          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            searchQuery = val;
+                          });
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: filtrados.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No se encontraron productos',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: filtrados.length,
+                              separatorBuilder: (context, index) => const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final p = filtrados[index];
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(p.descripcion, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  subtitle: Text(
+                                    'Código: ${p.codigo} | Categoría: ${p.categoria} | Precio: \$${p.precioUnitario.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  ),
+                                  trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF1976D2), size: 20),
+                                  onTap: () {
+                                    onSelected(p);
+                                    Navigator.pop(dialogContext);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _abrirPopupBusquedaCliente(BuildContext context) {
     showDialog(
       context: context,
@@ -331,7 +481,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                             )
                           : ListView.separated(
                               itemCount: filtrados.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              separatorBuilder: (context, index) => const Divider(height: 1),
                               itemBuilder: (context, index) {
                                 final c = filtrados[index];
                                 final label = c.codigo.isNotEmpty ? '${c.codigo} - ${c.nombre}' : c.nombre;
@@ -379,16 +529,21 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
   void _agregarProducto() {
     final codigo = _productoController.text.trim();
     final cant = int.tryParse(_cantidadController.text.trim()) ?? 1;
-    final precio = double.tryParse(_precioController.text.trim()) ?? 10000.00;
-    final desc = double.tryParse(_descuentoController.text.trim()) ?? 0.0;
+    final precio = double.tryParse(_precioController.text.trim().replaceAll(',', '.')) ?? 10000.00;
+    final desc = double.tryParse(_descuentoController.text.trim().replaceAll(',', '.')) ?? 0.0;
 
     if (codigo.isEmpty) return;
+
+    final match = _catalogoProductos.where((p) => p.codigo.trim().toLowerCase() == codigo.toLowerCase()).firstOrNull;
+    final descripcion = match != null && match.descripcion.isNotEmpty
+        ? match.descripcion
+        : 'PRODUCTO ID: $codigo';
 
     setState(() {
       _items.add(
         OrderItemDraft(
           codigo: codigo,
-          descripcion: 'PRODUCTO ID: $codigo',
+          descripcion: descripcion,
           cantidad: cant,
           precioUnitario: precio,
           descuento: desc,
@@ -402,6 +557,286 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
     setState(() {
       _items.removeAt(index);
     });
+  }
+
+  void _confirmarEliminarProducto(int index) {
+    final item = _items[index];
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Eliminar Producto', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text('¿Desea quitar el producto "${item.codigo} - ${item.descripcion}" del detalle del pedido?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancelar', style: TextStyle(color: Color(0xFF616161))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              _eliminarProducto(index);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Línea eliminada y totales recalculados.'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _abrirDialogoEditarItem(int index) {
+    final itemActual = _items[index];
+    final codigoEditCtrl = TextEditingController(text: itemActual.codigo);
+    final descEditCtrl = TextEditingController(text: itemActual.descripcion);
+    final cantEditCtrl = TextEditingController(text: itemActual.cantidad.toString());
+    final precioEditCtrl = TextEditingController(text: itemActual.precioUnitario.toStringAsFixed(2));
+    final descMontoEditCtrl = TextEditingController(text: itemActual.descuento.toStringAsFixed(2));
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final cant = int.tryParse(cantEditCtrl.text.trim()) ?? 0;
+            final precio = double.tryParse(precioEditCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
+            final descuento = double.tryParse(descMontoEditCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
+            final subtotalLinea = (precio * cant) - descuento;
+
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              actionsPadding: const EdgeInsets.all(12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              title: Row(
+                children: const [
+                  Icon(Icons.edit_note, color: Color(0xFF1976D2), size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    'Editar Ítem del Pedido',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Código de Producto', style: TextStyle(fontSize: 11, color: Color(0xFF757575))),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 40,
+                            child: TextField(
+                              controller: codigoEditCtrl,
+                              keyboardType: TextInputType.text,
+                              style: const TextStyle(fontSize: 13),
+                              decoration: const InputDecoration(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                border: OutlineInputBorder(),
+                                hintText: 'Código',
+                              ),
+                              onChanged: (val) {
+                                final match = _catalogoProductos.where((p) => p.codigo.trim().toLowerCase() == val.trim().toLowerCase()).firstOrNull;
+                                if (match != null) {
+                                  descEditCtrl.text = match.descripcion;
+                                  if (match.precioUnitario > 0) {
+                                    precioEditCtrl.text = match.precioUnitario.toStringAsFixed(2);
+                                  }
+                                }
+                                setDialogState(() {});
+                              },
+                            ),
+                          ),
+                        ),
+                        if (_catalogoProductos.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          IconButton(
+                            tooltip: 'Buscar en catálogo',
+                            icon: const Icon(Icons.search, color: Color(0xFF1976D2)),
+                            onPressed: () => _abrirPopupBusquedaProducto(
+                              context,
+                              (prod) {
+                                codigoEditCtrl.text = prod.codigo;
+                                descEditCtrl.text = prod.descripcion;
+                                precioEditCtrl.text = prod.precioUnitario.toStringAsFixed(2);
+                                setDialogState(() {});
+                              },
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text('Descripción', style: TextStyle(fontSize: 11, color: Color(0xFF757575))),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: descEditCtrl,
+                        style: const TextStyle(fontSize: 13),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Cantidad', style: TextStyle(fontSize: 11, color: Color(0xFF757575))),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                height: 40,
+                                child: TextField(
+                                  controller: cantEditCtrl,
+                                  keyboardType: TextInputType.number,
+                                  style: const TextStyle(fontSize: 13),
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (_) => setDialogState(() {}),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Precio Unitario', style: TextStyle(fontSize: 11, color: Color(0xFF757575))),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                height: 40,
+                                child: TextField(
+                                  controller: precioEditCtrl,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  style: const TextStyle(fontSize: 13),
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (_) => setDialogState(() {}),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text('Descuento', style: TextStyle(fontSize: 11, color: Color(0xFF757575))),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: descMontoEditCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(fontSize: 13),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total de línea:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          Text(
+                            '\$${subtotalLinea.toStringAsFixed(2).replaceAll('.', ',')}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryRed),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cancelar', style: TextStyle(color: Color(0xFF616161))),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryRed,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  onPressed: () {
+                    final nuevoCodigo = codigoEditCtrl.text.trim();
+                    if (nuevoCodigo.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('El código del producto no puede estar vacío.')),
+                      );
+                      return;
+                    }
+                    final nuevaCantidad = int.tryParse(cantEditCtrl.text.trim()) ?? 1;
+                    if (nuevaCantidad <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('La cantidad debe ser mayor a 0.')),
+                      );
+                      return;
+                    }
+                    final nuevoPrecio = double.tryParse(precioEditCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
+                    final nuevoDesc = double.tryParse(descMontoEditCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
+                    final nuevaDesc = descEditCtrl.text.trim().isNotEmpty
+                        ? descEditCtrl.text.trim()
+                        : 'PRODUCTO ID: $nuevoCodigo';
+
+                    setState(() {
+                      _items[index] = OrderItemDraft(
+                        codigo: nuevoCodigo,
+                        descripcion: nuevaDesc,
+                        cantidad: nuevaCantidad,
+                        precioUnitario: nuevoPrecio,
+                        descuento: nuevoDesc,
+                      );
+                    });
+
+                    Navigator.pop(dialogCtx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Línea modificada y totales recalculados.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: const Text('Guardar Cambios', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _confirmarPedido(BuildContext context) async {
@@ -463,7 +898,7 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           'fecha': fechaOracle,
           'condicionventa': condicionCode,
           'total': _totalMonto,
-          'estado': 'NUEVO',
+          'estado': 'PENDIENTE',
         },
         'items': itemsPayload,
       };
@@ -484,8 +919,14 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           .toList();
 
       if (isOnline) {
-        await apiService.postPedido(payload);
-        // Guardar copia local con estado SYNCED registrando que fue creado online y con estado comercial NUEVO
+        final response = await apiService.postPedido(payload);
+        String? remoteCodigo;
+        if (response.data is Map) {
+          final data = response.data as Map;
+          remoteCodigo = (data['CODIGO'] ?? data['codigo'] ?? data['pedido_id'] ?? data['id'])?.toString();
+        }
+
+        // Guardar copia local con estado SYNCED registrando el código real del backend y estado comercial PENDIENTE
         await syncNotifier.saveOrderOffline(
           organizacionId: orgId,
           clienteId: clienteId,
@@ -498,7 +939,8 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           fecha: fechaDisplay,
           syncStatus: 'SYNCED',
           isCreatedOnline: true,
-          estado: 'NUEVO',
+          estado: 'PENDIENTE',
+          codigo: remoteCodigo ?? '',
           items: itemsMapList,
         );
       } else {
@@ -514,7 +956,8 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           fecha: fechaDisplay,
           syncStatus: 'PENDING_SYNC',
           isCreatedOnline: false,
-          estado: 'NUEVO',
+          estado: 'PENDIENTE',
+          codigo: '',
           items: itemsMapList,
         );
       }
@@ -524,8 +967,8 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
           SnackBar(
             content: Text(
               isOnline
-                  ? '¡Pedido #POST enviado exitosamente a la nube!'
-                  : '¡Pedido guardado en SQLite local! Se sincronizará automáticamente al reconectar.',
+                  ? '¡Pedido registrado y enviado con éxito!'
+                  : '¡Pedido guardado en el dispositivo! Se sincronizará automáticamente al recuperar conexión.',
             ),
             backgroundColor: isOnline ? Colors.green : AppColors.warningOrange,
             duration: const Duration(seconds: 4),
@@ -535,9 +978,14 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
       }
     } catch (e) {
       if (context.mounted) {
+        String errorMsg = 'No se pudo enviar el pedido. Por favor, verifique los datos o intente nuevamente.';
+        final raw = e.toString().replaceFirst('Exception: ', '').trim();
+        if (raw.isNotEmpty && !raw.contains('DioException') && !raw.contains('SocketException')) {
+          errorMsg = raw;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al enviar pedido: $e'),
+            content: Text(errorMsg),
             backgroundColor: AppColors.primaryRed,
           ),
         );
@@ -753,21 +1201,51 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Campo Producto ID
-        const Text('ID Producto', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
+        // Campo Producto ID con opción de búsqueda en catálogo
+        const Text('ID o Código de Producto', style: TextStyle(fontSize: 12, color: Color(0xFF616161))),
         const SizedBox(height: 4),
-        SizedBox(
-          height: 38,
-          child: TextField(
-            controller: _productoController,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 13),
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              border: OutlineInputBorder(),
-              hintText: 'ID o código de producto',
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 38,
+                child: TextField(
+                  controller: _productoController,
+                  keyboardType: TextInputType.text,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(),
+                    hintText: 'ID o código de producto',
+                  ),
+                  onChanged: (val) {
+                    final match = _catalogoProductos.where((p) => p.codigo.trim().toLowerCase() == val.trim().toLowerCase()).firstOrNull;
+                    if (match != null && match.precioUnitario > 0) {
+                      _precioController.text = match.precioUnitario.toStringAsFixed(2);
+                    }
+                  },
+                ),
+              ),
             ),
-          ),
+            if (_catalogoProductos.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  side: const BorderSide(color: Color(0xFF1976D2)),
+                ),
+                icon: const Icon(Icons.search, size: 16, color: Color(0xFF1976D2)),
+                label: const Text('Catálogo', style: TextStyle(fontSize: 12, color: Color(0xFF1976D2))),
+                onPressed: () => _abrirPopupBusquedaProducto(
+                  context,
+                  (prod) {
+                    _productoController.text = prod.codigo;
+                    _precioController.text = prod.precioUnitario.toStringAsFixed(2);
+                  },
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -883,24 +1361,46 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                     DataColumn(label: Text('Unitario', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
                     DataColumn(label: Text('Desc.', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
                     DataColumn(label: Text('Total', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
-                    DataColumn(label: Text('Accion', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
+                    DataColumn(label: Text('Acciones', style: TextStyle(color: Color(0xFF1976D2), fontSize: 12))),
                   ],
                   rows: [
                     ..._items.asMap().entries.map((entry) {
                       final idx = entry.key;
                       final item = entry.value;
                       return DataRow(cells: [
-                        DataCell(Text(item.codigo, style: const TextStyle(fontSize: 12))),
+                        DataCell(
+                          InkWell(
+                            onTap: () => _abrirDialogoEditarItem(idx),
+                            child: Text(
+                              item.codigo,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1976D2)),
+                            ),
+                          ),
+                        ),
                         DataCell(Text('${item.cantidad}', style: const TextStyle(fontSize: 12))),
                         DataCell(Text('\$${item.precioUnitario.toStringAsFixed(2).replaceAll('.', ',')}', style: const TextStyle(fontSize: 12))),
                         DataCell(Text(item.descuento > 0 ? '\$${item.descuento.toStringAsFixed(2)}' : '0', style: const TextStyle(fontSize: 12))),
                         DataCell(Text('\$${item.total.toStringAsFixed(2).replaceAll('.', ',')}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
                         DataCell(
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: const Icon(Icons.cancel, color: Color(0xFFD32F2F), size: 18),
-                            onPressed: () => _eliminarProducto(idx),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Editar ítem',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.edit_outlined, color: Color(0xFF1976D2), size: 18),
+                                onPressed: () => _abrirDialogoEditarItem(idx),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                tooltip: 'Eliminar ítem',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.delete_outline, color: Color(0xFFD32F2F), size: 18),
+                                onPressed: () => _confirmarEliminarProducto(idx),
+                              ),
+                            ],
                           ),
                         ),
                       ]);
@@ -922,6 +1422,16 @@ class _NuevoPedidoWizardScreenState extends State<NuevoPedidoWizardScreen> {
                   ],
                 ),
               ),
+              if (_items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+                  child: Center(
+                    child: Text(
+                      'No hay productos agregados al pedido.',
+                      style: TextStyle(color: Color(0xFF757575), fontSize: 13, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(

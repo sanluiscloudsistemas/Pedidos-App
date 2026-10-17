@@ -23,6 +23,9 @@ class MockSyncRepository implements SyncRepository {
     required double total,
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
+    bool isCreatedOnline = false,
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     final nextId = orders.length + 1;
@@ -38,6 +41,7 @@ class MockSyncRepository implements SyncRepository {
       total: total,
       fecha: fecha,
       syncStatus: syncStatus,
+      codigo: codigo.isNotEmpty ? codigo : 'LOC-$nextId',
       createdAt: DateTime.now(),
     );
 

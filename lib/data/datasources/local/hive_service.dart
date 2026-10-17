@@ -54,7 +54,8 @@ class HiveService {
     required String fecha,
     String syncStatus = 'PENDING_SYNC',
     bool isCreatedOnline = false,
-    String estado = 'NUEVO',
+    String estado = 'PENDIENTE',
+    String codigo = '',
     required List<Map<String, dynamic>> items,
   }) async {
     // Generar ID autoincremental
@@ -62,6 +63,8 @@ class HiveService {
             ? _ordersBox.keys.cast<int>().reduce((a, b) => a > b ? a : b)
             : 0) +
         1;
+
+    final String orderCode = codigo.isNotEmpty ? codigo : 'LOC-$nextOrderId';
 
     final orderEntity = LocalOrderEntity(
       id: nextOrderId,
@@ -77,6 +80,7 @@ class HiveService {
       syncStatus: syncStatus,
       isCreatedOnline: isCreatedOnline,
       estado: estado,
+      codigo: orderCode,
       createdAt: DateTime.now(),
     );
 
@@ -165,6 +169,7 @@ class HiveService {
     int orderId,
     String status, {
     String? errorMessage,
+    String? codigo,
   }) async {
     final orderMap = _ordersBox.get(orderId);
     if (orderMap != null) {
@@ -172,6 +177,7 @@ class HiveService {
       final updated = current.copyWith(
         syncStatus: status,
         syncErrorMessage: errorMessage,
+        codigo: (codigo != null && codigo.isNotEmpty) ? codigo : current.codigo,
       );
       await _ordersBox.put(orderId, updated.toMap());
       _notifyOrdersChanged();
