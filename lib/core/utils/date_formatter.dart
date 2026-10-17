@@ -70,6 +70,42 @@ class DateFormatter {
     return '$y-$m-$d $h:$min:$s:$tzh';
   }
 
+  /// Formato relativo de tiempo transcurrido (ej. 'Hace 3 meses', 'Hace 5 semanas', 'Hace 2 días')
+  static String formatRelativeTime(DateTime dt, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final diff = current.difference(dt);
+
+    if (diff.isNegative) {
+      return formatDdMonYyyy(dt);
+    }
+
+    final days = diff.inDays;
+    if (days >= 365) {
+      final years = (days / 365).floor();
+      return years == 1 ? 'Hace 1 año' : 'Hace $years años';
+    } else if (days >= 60) {
+      final months = (days / 30).floor();
+      return 'Hace $months meses';
+    } else if (days >= 14) {
+      final weeks = (days / 7).floor();
+      return 'Hace $weeks semanas';
+    } else if (days >= 7) {
+      return 'Hace 1 semana';
+    } else if (days >= 2) {
+      return 'Hace $days días';
+    } else if (days == 1) {
+      return 'Ayer';
+    } else if (diff.inHours >= 1) {
+      final hours = diff.inHours;
+      return hours == 1 ? 'Hace 1 hora' : 'Hace $hours horas';
+    } else if (diff.inMinutes >= 1) {
+      final minutes = diff.inMinutes;
+      return minutes == 1 ? 'Hace 1 minuto' : 'Hace $minutes minutos';
+    } else {
+      return 'Hace unos instantes';
+    }
+  }
+
   /// Parseo flexible de fechas que admite formatos ISO, Oracle Timestamp, DD MON YYYY, DD/MM/YYYY, etc.
   static DateTime? parseFlexible(dynamic val) {
     if (val == null) return null;

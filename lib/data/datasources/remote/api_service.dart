@@ -24,8 +24,10 @@ class ApiService {
   String? get currentSisorgId => _sisorgId;
   String? get currentSisorgCodigo => _sisorgCodigo;
   String? get currentSisperId => _sisperId ?? getSisperIdFromToken();
-  String? get currentDepositoId => _depositoId;
-  String? get sisorgId => _sisorgId ?? _sisorgCodigo ?? getSisorgIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISORG_CODIGO') : null) ?? '14';
+  String? get sisorgId =>
+      _sisorgId ??
+      getSisorgIdFromToken() ??
+      (int.tryParse(_sisorgCodigo ?? '') != null ? _sisorgCodigo : null);
   String? get sisperId => _sisperId ?? getSisperIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISPER_ID') : null) ?? '19565';
   String? get sisdepId => _sisdepId ?? getSisdepIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISDEP_ID') : null) ?? sisperId;
   String? get depositoId => _depositoId ?? getDepositoIdFromToken() ?? sisdepId ?? (dotenv.isInitialized ? dotenv.maybeGet('DEPOSITO_ID') : null);
@@ -327,6 +329,27 @@ class ApiService {
       );
     } on DioException catch (e) {
       throw Exception('Error al obtener clientes: ${e.message}');
+    }
+  }
+
+  Future<Response> getFaltantes({
+    dynamic sisorgId,
+    int offset = 0,
+    int limit = 25,
+  }) async {
+    try {
+      final orgId = sisorgId ?? this.sisorgId;
+
+      return await _dio.get(
+        ApiEndpoints.faltantes,
+        queryParameters: {
+          'sisorg_id': orgId,
+          'offset': offset,
+          'limit': limit,
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al obtener faltantes: ${e.message}');
     }
   }
 
