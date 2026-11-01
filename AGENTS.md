@@ -36,5 +36,10 @@
 - Regla estricta: Staging selectivo, prohibición de incluir archivos sensibles (`.env` o credenciales) y validación de calidad antes de publicar.
 - Consultar la especificación en [.agents/skills/git-commit-push/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/git-commit-push/SKILL.md) y las directrices en [.agents/rules/reglas_git_commit_push.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/rules/reglas_git_commit_push.md).
 
+## Reglas de Integración ORDS y Variables de Entorno
+- Diferenciación estricta entre `SISORG_CODIGO` (código de texto para login) y `SISORG_ID` (identificador numérico para consultas REST).
+- Evitar fallos de conversión SQL `ORA-01722 / HTTP 500` en endpoints como `catalogo`, `pedidos` y `clientes`.
+- Consultar la regla completa en [.agents/rules/regla_organizacion_ords_env.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/rules/regla_organizacion_ords_env.md).
+
 
 

@@ -28,6 +28,12 @@ Este documento registra la estructura de datos estandarizada para las respuestas
 }
 ```
 
+## 🔍 Parámetros de Consulta (Query Parameters)
+
+| Parámetro | Tipo | Requerido | Descripción |
+| :--- | :--- | :--- | :--- |
+| `sisorg_id` | `NUMBER` (numérico) | **Sí** | Identificador numérico de la organización (ej: `14`). **Nunca** enviar códigos alfanuméricos como `'CTRO'`, ya que provoca error `ORA-01722 / HTTP 500` en Oracle ORDS. |
+
 ## 🔍 Descripción de los Campos
 
 | Campo | Tipo | Descripción |

@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/errors/exceptions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_styles.dart';
 import '../../data/datasources/remote/api_service.dart';
+import '../notifiers/connectivity_notifier.dart';
 import '../widgets/common/list_header_summary.dart';
 import '../widgets/common/preventa_app_bar.dart';
 import '../widgets/common/preventa_drawer.dart';
@@ -135,10 +137,20 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error al cargar catálogo: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        if (e is ServerConnectionException) {
+          try {
+            context.read<ConnectivityNotifier>().setServerUnreachable(true);
+          } catch (_) {}
+        }
+        final friendlyMsg = e is ServerConnectionException
+            ? e.message
+            : e.toString().replaceFirst('Exception: ', '');
+        setState(() {
+          _errorMessage = friendlyMsg;
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -27,9 +27,11 @@ class ApiService {
   String? get currentSisorgCodigo => _sisorgCodigo;
   String? get currentSisperId => _sisperId ?? getSisperIdFromToken();
   String? get sisorgId =>
-      _sisorgId ??
-      getSisorgIdFromToken() ??
-      (int.tryParse(_sisorgCodigo ?? '') != null ? _sisorgCodigo : null);
+      (int.tryParse(_sisorgId ?? '') != null ? _sisorgId : null) ??
+      (int.tryParse(getSisorgIdFromToken() ?? '') != null ? getSisorgIdFromToken() : null) ??
+      (dotenv.isInitialized ? dotenv.maybeGet('SISORG_ID') : null) ??
+      (int.tryParse(_sisorgCodigo ?? '') != null ? _sisorgCodigo : null) ??
+      '14';
   String? get sisperId => _sisperId ?? getSisperIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISPER_ID') : null) ?? '19565';
   String? get sisdepId => _sisdepId ?? getSisdepIdFromToken() ?? (dotenv.isInitialized ? dotenv.maybeGet('SISDEP_ID') : null) ?? sisperId;
   String? get depositoId => _depositoId ?? getDepositoIdFromToken() ?? sisdepId ?? (dotenv.isInitialized ? dotenv.maybeGet('DEPOSITO_ID') : null);
@@ -274,18 +276,7 @@ class ApiService {
         data: payload,
       );
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final data = e.response!.data;
-        if (data is Map<String, dynamic>) {
-          final msg = data['message'] ?? data['title'] ?? data['error'] ?? data['cause'];
-          if (msg != null && msg.toString().isNotEmpty) {
-            throw Exception('Error al enviar pedido (${e.response?.statusCode}): $msg');
-          }
-        } else if (data is String && data.isNotEmpty) {
-          throw Exception('Error al enviar pedido (${e.response?.statusCode}): $data');
-        }
-      }
-      throw Exception('Error al enviar pedido: ${e.message}');
+      _handleDioError(e, 'enviar pedido');
     }
   }
 
@@ -296,12 +287,7 @@ class ApiService {
     int limit = 25,
   }) async {
     try {
-      final orgId = sisorgId ??
-          _sisorgId ??
-          _sisorgCodigo ??
-          getSisorgIdFromToken() ??
-          dotenv.maybeGet('SISORG_CODIGO');
-
+      final orgId = sisorgId ?? this.sisorgId;
       final vendId = sisperId ?? this.sisperId;
 
       final headers = <String, dynamic>{};
@@ -323,7 +309,7 @@ class ApiService {
         }..removeWhere((key, value) => value == null),
       );
     } on DioException catch (e) {
-      throw Exception('Error al obtener pedidos: ${e.message}');
+      _handleDioError(e, 'obtener pedidos');
     }
   }
 
@@ -334,7 +320,7 @@ class ApiService {
         data: payload,
       );
     } on DioException catch (e) {
-      throw Exception('Error al enviar cliente: ${e.message}');
+      _handleDioError(e, 'enviar cliente');
     }
   }
 
@@ -344,15 +330,11 @@ class ApiService {
     int limit = 25,
   }) async {
     try {
-      final orgId = sisorgId ??
-          _sisorgId ??
-          _sisorgCodigo ??
-          getSisorgIdFromToken() ??
-          dotenv.maybeGet('SISORG_CODIGO');
+      final orgId = sisorgId ?? this.sisorgId;
 
       if (orgId == null || orgId.toString().isEmpty) {
         throw Exception(
-          'No se pudo determinar el SISORG_ID / SISORG_CODIGO. Inicie sesión nuevamente.',
+          'No se pudo determinar el SISORG_ID. Inicie sesión nuevamente.',
         );
       }
 
@@ -365,7 +347,7 @@ class ApiService {
         },
       );
     } on DioException catch (e) {
-      throw Exception('Error al obtener clientes: ${e.message}');
+      _handleDioError(e, 'obtener clientes');
     }
   }
 
@@ -386,7 +368,7 @@ class ApiService {
         },
       );
     } on DioException catch (e) {
-      throw Exception('Error al obtener faltantes: ${e.message}');
+      _handleDioError(e, 'obtener faltantes');
     }
   }
 
@@ -397,21 +379,17 @@ class ApiService {
         data: payload,
       );
     } on DioException catch (e) {
-      throw Exception('Error al enviar faltante: ${e.message}');
+      _handleDioError(e, 'enviar faltante');
     }
   }
 
   Future<Response> getCatalogo({dynamic sisorgId}) async {
     try {
-      final orgId = sisorgId ??
-          _sisorgId ??
-          _sisorgCodigo ??
-          getSisorgIdFromToken() ??
-          dotenv.maybeGet('SISORG_CODIGO');
+      final orgId = sisorgId ?? this.sisorgId;
 
       if (orgId == null || orgId.toString().isEmpty) {
         throw Exception(
-          'No se pudo determinar el SISORG_ID / SISORG_CODIGO. Inicie sesión nuevamente.',
+          'No se pudo determinar el SISORG_ID. Inicie sesión nuevamente.',
         );
       }
 
@@ -420,7 +398,7 @@ class ApiService {
         queryParameters: {'sisorg_id': orgId},
       );
     } on DioException catch (e) {
-      throw Exception('Error al obtener catálogo: ${e.message}');
+      _handleDioError(e, 'obtener catálogo');
     }
   }
 
@@ -430,12 +408,7 @@ class ApiService {
     int limit = 100,
   }) async {
     try {
-      final orgId = sisorgId ??
-          _sisorgId ??
-          _sisorgCodigo ??
-          getSisorgIdFromToken() ??
-          dotenv.maybeGet('SISORG_CODIGO') ??
-          '14';
+      final orgId = sisorgId ?? this.sisorgId;
 
       return await _dio.get(
         ApiEndpoints.repartos,
@@ -446,7 +419,46 @@ class ApiService {
         },
       );
     } on DioException catch (e) {
-      throw Exception('Error al obtener repartos: ${e.message}');
+      _handleDioError(e, 'obtener repartos');
     }
+  }
+
+  Never _handleDioError(DioException e, String operacion) {
+    if (e.response != null) {
+      final statusCode = e.response?.statusCode;
+      final responseData = e.response?.data;
+
+      if (statusCode != null && statusCode >= 500) {
+        String detail = '';
+        if (responseData is Map<String, dynamic>) {
+          final message = responseData['message'] ?? responseData['resultado'] ?? responseData['error'];
+          if (message != null && message.toString().isNotEmpty) {
+            detail = ': $message';
+          }
+        }
+        throw ServerConnectionException(
+          'No hay conexión con el servidor (Error $statusCode$detail). Intente más tarde o verifique el backend.',
+          statusCode: statusCode,
+        );
+      }
+
+      if (responseData is Map<String, dynamic>) {
+        final message = responseData['message'] ?? responseData['resultado'] ?? responseData['error'];
+        if (message != null && message.toString().isNotEmpty) {
+          throw Exception(message.toString());
+        }
+      }
+    }
+
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.connectionError) {
+      throw ServerConnectionException(
+        'No se pudo conectar con el servidor al $operacion. Verifique su conexión de red.',
+      );
+    }
+
+    throw Exception('Error al $operacion: ${e.response?.statusMessage ?? e.message ?? "Error inesperado"}');
   }
 }
