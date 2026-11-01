@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_styles.dart';
@@ -18,15 +19,27 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _orgController = TextEditingController();
+  late final TextEditingController _orgController;
   final _userController = TextEditingController();
   final _passController = TextEditingController();
   bool _obscurePassword = true;
   bool _canUseBiometrics = false;
 
+  String? _getEnvOrg() {
+    try {
+      final val = dotenv.maybeGet('SISORG_CODIGO')?.trim();
+      return (val != null && val.isNotEmpty) ? val : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get _hasConfiguredOrg => _getEnvOrg() != null;
+
   @override
   void initState() {
     super.initState();
+    _orgController = TextEditingController(text: _getEnvOrg() ?? '');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initSavedDataAndBiometrics();
     });
@@ -126,17 +139,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              TextFormField(
-                controller: _orgController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Organización',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.business, color: AppColors.primaryRed),
+              if (!_hasConfiguredOrg) ...[
+                TextFormField(
+                  controller: _orgController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: const InputDecoration(
+                    labelText: 'Organización',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.business, color: AppColors.primaryRed),
+                  ),
+                  validator: (val) =>
+                      val == null || val.trim().isEmpty ? 'Campo requerido' : null,
                 ),
-                validator: (val) => val!.isEmpty ? 'Campo requerido' : null,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
               TextFormField(
                 controller: _userController,
                 textCapitalization: TextCapitalization.characters,
@@ -289,9 +305,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin(BuildContext context) async {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
+    final org = _getEnvOrg() ?? _orgController.text.trim().toUpperCase();
 
     final success = await authNotifier.login(
-      _orgController.text.trim().toUpperCase(),
+      org,
       _userController.text.trim().toUpperCase(),
       _passController.text,
     );
