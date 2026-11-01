@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 /// Notificador de estado de conectividad a Internet en tiempo real.
 /// Escucha cambios de red (Wi-Fi, Datos Móviles, Ethernet, Offline)
@@ -13,13 +12,27 @@ class ConnectivityNotifier extends ChangeNotifier {
   bool _isConnected = true;
   bool _isManualOverride = false;
   bool _manualOfflineState = false;
+  bool _serverUnreachable = false;
 
   bool get isConnected {
+    if (_serverUnreachable) {
+      return false;
+    }
     // La simulación manual solo se encuentra habilitada en entornos de desarrollo / pruebas (kDebugMode)
     if (kDebugMode && _isManualOverride) {
       return !_manualOfflineState;
     }
     return _isConnected;
+  }
+
+  bool get isServerUnreachable => _serverUnreachable;
+
+  /// Marca explícitamente el servidor como inalcanzable, activando inmediatamente el modo offline
+  void setServerUnreachable(bool unreachable) {
+    if (_serverUnreachable != unreachable) {
+      _serverUnreachable = unreachable;
+      notifyListeners();
+    }
   }
 
   ConnectivityNotifier() {
@@ -56,6 +69,7 @@ class ConnectivityNotifier extends ChangeNotifier {
   /// Restablecer la detección automática de red
   void resetToRealConnectivity() {
     _isManualOverride = false;
+    _serverUnreachable = false;
     _initConnectivity();
   }
 

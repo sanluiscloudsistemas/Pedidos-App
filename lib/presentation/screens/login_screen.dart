@@ -24,6 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passController = TextEditingController();
   bool _obscurePassword = true;
   bool _canUseBiometrics = false;
+  bool _hasSavedSession = false;
+  String? _savedUsername;
 
   String? _getEnvOrg() {
     try {
@@ -49,11 +51,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
     final hasBiometrics = await authNotifier.isBiometricAvailable();
     final canBio = await authNotifier.canUseBiometrics();
+    final savedUser = await authNotifier.getSavedUserData();
 
     if (!mounted) return;
 
     setState(() {
       _canUseBiometrics = hasBiometrics || canBio;
+      _savedUsername = savedUser?['usuario'];
+      _hasSavedSession = savedUser != null && (_savedUsername?.isNotEmpty ?? false);
     });
   }
 
@@ -218,76 +223,136 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                           final isOffline = conn != null ? !conn.isConnected : false;
 
-                          // El botón con icono de huella es SOLO visible si la aplicación está offline
-                          if (!_canUseBiometrics || !isOffline) {
+                          // Las opciones offline son visibles si la aplicación está offline o se detectó caída de servidor
+                          if (!isOffline && !_canUseBiometrics && !_hasSavedSession) {
                             return const SizedBox.shrink();
                           }
 
                           return Column(
                             children: [
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: AppColors.primaryRed,
-                                    side: const BorderSide(
-                                      color: AppColors.primaryRed,
-                                      width: 1.8,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    elevation: 1,
+                              if (isOffline) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.orange.shade300),
                                   ),
-                                  icon: const Icon(
-                                    Icons.fingerprint,
-                                    size: 30,
-                                    color: AppColors.primaryRed,
-                                  ),
-                                  label: const Text(
-                                    'Ingresar con Huella Digital',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primaryRed,
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const BiometricAuthScreen(),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.cloud_off,
+                                        size: 16,
+                                        color: Colors.orange.shade800,
                                       ),
-                                    );
-                                  },
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          'Modo Offline activo (sin conexión con el servidor)',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.orange.shade900,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.wifi_off,
-                                    size: 13,
-                                    color: Colors.orange.shade800,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Flexible(
-                                    child: Text(
-                                      'Modo Offline: Presione para capturar su huella digital',
-                                      textAlign: TextAlign.center,
+                              ],
+                              if (_canUseBiometrics && isOffline) ...[
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: AppColors.primaryRed,
+                                      side: const BorderSide(
+                                        color: AppColors.primaryRed,
+                                        width: 1.8,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      elevation: 1,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.fingerprint,
+                                      size: 30,
+                                      color: AppColors.primaryRed,
+                                    ),
+                                    label: const Text(
+                                      'Ingresar con Huella Digital',
                                       style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.orange.shade900,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryRed,
                                       ),
                                     ),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const BiometricAuthScreen(),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
+                              if (_hasSavedSession && isOffline) ...[
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primaryRed,
+                                      side: const BorderSide(
+                                        color: AppColors.primaryRed,
+                                        width: 1.5,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.account_circle,
+                                      size: 26,
+                                      color: AppColors.primaryRed,
+                                    ),
+                                    label: Text(
+                                      _savedUsername != null && _savedUsername!.isNotEmpty
+                                          ? 'Ingresar como $_savedUsername (Modo Offline)'
+                                          : 'Ingresar con Sesión Guardada (Modo Offline)',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryRed,
+                                      ),
+                                    ),
+                                    onPressed: () => _handleSavedSessionLogin(context),
+                                  ),
+                                ),
+                              ],
+                              if (isOffline) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Los pedidos creados en modo offline se sincronizarán al recuperar la conexión.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.orange.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
                             ],
                           );
                         },
@@ -305,6 +370,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin(BuildContext context) async {
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
+    ConnectivityNotifier? conn;
+    try {
+      conn = Provider.of<ConnectivityNotifier>(context, listen: false);
+    } catch (_) {
+      conn = null;
+    }
+
     final org = _getEnvOrg() ?? _orgController.text.trim().toUpperCase();
 
     final success = await authNotifier.login(
@@ -333,13 +405,55 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authNotifier.errorMessage ?? 'Error desconocido'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        final errorMsg = authNotifier.errorMessage ?? 'Error desconocido';
+        final isServerDown = errorMsg.toLowerCase().contains('servidor') ||
+            errorMsg.toLowerCase().contains('conexión') ||
+            errorMsg.toLowerCase().contains('offline');
+
+        if (isServerDown) {
+          conn?.setServerUnreachable(true);
+          await _initSavedDataAndBiometrics();
+        }
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: isServerDown ? Colors.orange.shade800 : Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
+    }
+  }
+
+  void _handleSavedSessionLogin(BuildContext context) async {
+    final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
+    final success = await authNotifier.loginWithSavedSession();
+
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Bienvenido: ${authNotifier.currentUser?.usuario} (Sesión Offline Guardada)',
+          ),
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authNotifier.errorMessage ?? 'No se pudo restaurar la sesión guardada.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
