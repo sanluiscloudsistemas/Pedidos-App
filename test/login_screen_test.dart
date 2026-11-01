@@ -10,12 +10,15 @@ import 'package:preventa/domain/usecases/login_use_case.dart';
 import 'package:preventa/domain/usecases/login_with_biometrics_use_case.dart';
 import 'package:preventa/domain/usecases/logout_use_case.dart';
 import 'package:preventa/presentation/notifiers/auth_notifier.dart';
+import 'package:preventa/presentation/notifiers/connectivity_notifier.dart';
 import 'package:preventa/presentation/screens/login_screen.dart';
 
 class MockAuthRepository implements AuthRepository {
   String? lastOrganizacion;
   String? lastUsuario;
   String? lastContrasenia;
+  bool shouldThrowServerException = false;
+  Map<String, String>? savedUserData;
 
   @override
   Future<UserEntity?> login({
@@ -23,6 +26,9 @@ class MockAuthRepository implements AuthRepository {
     required String usuario,
     required String contrasenia,
   }) async {
+    if (shouldThrowServerException) {
+      throw Exception('No hay conexión con el servidor. Se activó el modo offline.');
+    }
     lastOrganizacion = organizacion;
     lastUsuario = usuario;
     lastContrasenia = contrasenia;
@@ -37,7 +43,17 @@ class MockAuthRepository implements AuthRepository {
   Future<UserEntity?> loginWithBiometrics() async => null;
 
   @override
-  Future<UserEntity?> getCurrentUser() async => null;
+  Future<UserEntity?> getCurrentUser() async {
+    if (savedUserData != null) {
+      return UserEntity(
+        token: 'saved_token',
+        usuario: savedUserData!['usuario'] ?? 'Usuario',
+        organizacion: savedUserData!['organizacion'] ?? 'ORG',
+        isOfflineSession: true,
+      );
+    }
+    return null;
+  }
 
   @override
   Future<void> logout() async {}
@@ -55,7 +71,7 @@ class MockAuthRepository implements AuthRepository {
   Future<bool> canUseBiometrics() async => false;
 
   @override
-  Future<Map<String, String>?> getSavedUserData() async => null;
+  Future<Map<String, String>?> getSavedUserData() async => savedUserData;
 }
 
 void main() {
@@ -120,5 +136,54 @@ void main() {
     // Debe haber ejecutado login con la organización configurada en dotenv
     expect(mockRepo.lastOrganizacion, equals('CTRO'));
     expect(mockRepo.lastUsuario, equals('VENDEDOR1'));
+  });
+
+  testWidgets(
+      'Activa modo offline y muestra opciones alternativas cuando falla conexion con el servidor',
+      (WidgetTester tester) async {
+    dotenv.loadFromString(envString: 'SISORG_CODIGO=CTRO\n');
+
+    final mockRepo = MockAuthRepository();
+    // Simulamos fallo de conexion con el servidor
+    mockRepo.shouldThrowServerException = true;
+    mockRepo.savedUserData = {
+      'usuario': 'VENDEDOR_OFFLINE',
+      'organizacion': 'CTRO',
+    };
+
+    final authNotifier = AuthNotifier(
+      LoginUseCase(mockRepo),
+      CheckSessionUseCase(mockRepo),
+      LogoutUseCase(mockRepo),
+      LoginWithBiometricsUseCase(mockRepo),
+    );
+    final connectivityNotifier = ConnectivityNotifier();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthNotifier>.value(value: authNotifier),
+          ChangeNotifierProvider<ConnectivityNotifier>.value(
+              value: connectivityNotifier),
+        ],
+        child: const MaterialApp(
+          home: LoginScreen(),
+        ),
+      ),
+    );
+
+    // Intentamos conectar con credenciales
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Usuario'), 'VENDEDOR1');
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Contraseña'), '123456');
+
+    await tester.tap(find.text('Conectar'));
+    await tester.pumpAndSettle();
+
+    // El notificador debe haber marcado el servidor como inalcanzable (modo offline activo)
+    expect(connectivityNotifier.isConnected, isFalse);
+    expect(find.textContaining('Modo Offline activo'), findsOneWidget);
+    expect(find.textContaining('VENDEDOR_OFFLINE'), findsOneWidget);
   });
 }

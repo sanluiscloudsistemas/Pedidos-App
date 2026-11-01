@@ -130,6 +130,11 @@ class AuthNotifier extends ChangeNotifier {
     }
   }
 
+  /// Inicia sesión utilizando los tokens y credenciales almacenadas de la última conexión (Modo Offline)
+  Future<bool> loginWithSavedSession() async {
+    return await checkSession();
+  }
+
   Future<void> logout() async {
     try {
       await _logoutUseCase?.execute();

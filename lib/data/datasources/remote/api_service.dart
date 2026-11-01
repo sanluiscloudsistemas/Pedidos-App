@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/errors/exceptions.dart';
 import '../../models/dto/auth_response_dto.dart';
 
 class ApiService {
@@ -213,20 +215,55 @@ class ApiService {
         final statusCode = e.response?.statusCode;
         final responseData = e.response?.data;
 
-        if (statusCode == 555 || statusCode == 401 || statusCode == 500) {
+        if (statusCode != null && statusCode >= 500) {
+          String detail = '';
           if (responseData is Map<String, dynamic>) {
             final message = responseData['message'] ?? responseData['resultado'] ?? responseData['error'];
             if (message != null && message.toString().isNotEmpty) {
-              throw Exception('Error $statusCode de APEX: $message');
+              detail = ': $message';
             }
           }
-          if (statusCode == 555) {
-            throw Exception(
-                'Error 555 en ORDS: Ocurrió un error en el procedimiento PL/SQL de Oracle APEX. Verifique si el script SQL ya fue aplicado por el DBA o si las credenciales son válidas.');
+          throw ServerConnectionException(
+            'No hay conexión con el servidor (Error $statusCode$detail). Se activó el modo offline.',
+            statusCode: statusCode,
+          );
+        }
+
+        if (statusCode == 401) {
+          if (responseData is Map<String, dynamic>) {
+            final message = responseData['message'] ?? responseData['resultado'] ?? responseData['error'];
+            if (message != null && message.toString().isNotEmpty) {
+              throw Exception(message);
+            }
           }
+          throw Exception('Credenciales inválidas. Verifique su organización, usuario y contraseña.');
+        }
+
+        if (statusCode == 555) {
+          throw ServerConnectionException(
+            'Error 555 en ORDS: Procedimiento en Oracle APEX no disponible. Se activó el modo offline.',
+            statusCode: statusCode,
+          );
         }
       }
-      throw Exception('Error en la autenticación: ${e.message}');
+
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw ServerConnectionException(
+          'Tiempo de espera agotado al conectar con el servidor. Se activó el modo offline.',
+        );
+      }
+
+      if (e.type == DioExceptionType.connectionError || e.error is SocketException) {
+        throw ServerConnectionException(
+          'No hay conexión con el servidor. Se activó el modo offline.',
+        );
+      }
+
+      throw ServerConnectionException(
+        'No fue posible establecer conexión con el servidor. Se activó el modo offline.',
+      );
     }
   }
 

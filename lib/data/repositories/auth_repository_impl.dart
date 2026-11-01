@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import '../../core/errors/exceptions.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/services/secure_storage_service.dart';
 import '../../core/utils/hash_util.dart';
@@ -86,18 +87,32 @@ class AuthRepositoryImpl implements AuthRepository {
           contrasenia,
         );
 
-        if (savedHash != null && savedHash == inputHash) {
+        // Validación de contingencia contra la organización previa guardada
+        final userData = await _secureStorage.getUserData();
+        final savedOrg = userData?['organizacion'];
+        final fallbackHash = (savedOrg != null && savedOrg.isNotEmpty)
+            ? HashUtil.hashCredentials(savedOrg, usuario, contrasenia)
+            : null;
+
+        if (savedHash != null &&
+            (savedHash == inputHash || (fallbackHash != null && savedHash == fallbackHash))) {
           final user = await getCurrentUser();
           if (user != null) {
             return user;
           } else {
             throw Exception(
-              'Sin conexión a internet y la sesión local previa ha caducado. Conéctese a la red para renovar sus credenciales.',
+              'No hay conexión con el servidor y la sesión local previa ha caducado.',
             );
           }
         } else {
+          final savedToken = await _secureStorage.getToken();
+          if (savedToken != null && savedToken.isNotEmpty && userData != null) {
+            throw Exception(
+              'No hay conexión con el servidor. Las credenciales no coinciden con las registradas para el modo offline. Puede ingresar con Huella Digital o Sesión Guardada.',
+            );
+          }
           throw Exception(
-            'Sin conexión a internet y las credenciales ingresadas no coinciden con las últimas registradas en este dispositivo.',
+            'No hay conexión con el servidor. Se activó el modo offline. Conéctese a la red para iniciar sesión por primera vez.',
           );
         }
       }
@@ -106,7 +121,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   bool _isNetworkError(dynamic e) {
+    if (e is ServerConnectionException) return true;
     if (e is DioException) {
+      final status = e.response?.statusCode;
+      if (status != null && status >= 500) return true;
       return e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
@@ -118,7 +136,15 @@ class AuthRepositoryImpl implements AuthRepository {
         msg.contains('connection') ||
         msg.contains('network') ||
         msg.contains('timed out') ||
-        msg.contains('failed host lookup');
+        msg.contains('failed host lookup') ||
+        msg.contains('no hay conexión con el servidor') ||
+        msg.contains('modo offline') ||
+        msg.contains('servidor') ||
+        msg.contains('status code of 500') ||
+        msg.contains('500') ||
+        msg.contains('502') ||
+        msg.contains('503') ||
+        msg.contains('504');
   }
 
   @override
