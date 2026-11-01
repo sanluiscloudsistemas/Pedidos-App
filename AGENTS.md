@@ -31,5 +31,10 @@
 - Emite veredicto formal vinculante (`RECHAZADO`, `APROBADO CONDICIONAL` o `APROBADO`) previo a considerar concluida cualquier implementación.
 - Consultar la especificación completa en [.agents/skills/adversarial-approver/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/adversarial-approver/SKILL.md).
 
+## Agente de Git (Commit y Push Remoto)
+- Responsable de preparar commits semánticos, crear ramas temáticas con nombres consistentes con el desarrollo y publicar los cambios al repositorio remoto (`origin`).
+- Regla estricta: Staging selectivo, prohibición de incluir archivos sensibles (`.env` o credenciales) y validación de calidad antes de publicar.
+- Consultar la especificación en [.agents/skills/git-commit-push/SKILL.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/skills/git-commit-push/SKILL.md) y las directrices en [.agents/rules/reglas_git_commit_push.md](file:///c:/Projects/Frontend/flutter/preventas/.agents/rules/reglas_git_commit_push.md).
+
 
 
