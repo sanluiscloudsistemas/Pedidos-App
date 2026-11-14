@@ -349,9 +349,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ListHeaderSummary(
-              count: productosList.length,
-              label: '   Lista de Productos',
+            Expanded(
+              child: ListHeaderSummary(
+                count: productosList.length,
+                label: 'Lista de Prod.',
+              ),
             ),
             TextButton.icon(
               onPressed: _resetFilters,

@@ -134,9 +134,11 @@ class _MisRepartosScreenState extends State<MisRepartosScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ListHeaderSummary(
-                    count: repartosList.length,
-                    label: 'repartos',
+                  Expanded(
+                    child: ListHeaderSummary(
+                      count: repartosList.length,
+                      label: 'repartos',
+                    ),
                   ),
                   TextButton.icon(
                     onPressed: _resetFilters,

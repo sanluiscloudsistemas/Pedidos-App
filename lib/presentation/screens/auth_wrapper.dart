@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../notifiers/auth_notifier.dart';
-import 'home_screen.dart';
 import 'login_screen.dart';
 
 /// Orquesta la navegación inicial de la aplicación determinando si
@@ -24,22 +21,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAuth() async {
-    final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    final hasSession = await authNotifier.checkSession();
-
     if (!mounted) return;
 
-    if (hasSession && authNotifier.currentUser != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    }
+    // Se requiere siempre autenticación explícita (usuario/contraseña o biometría)
+    // al abrir la aplicación, sin bypass automático hacia HomeScreen.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
 
   @override

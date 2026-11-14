@@ -59,6 +59,11 @@ class _LoginScreenState extends State<LoginScreen> {
       _canUseBiometrics = hasBiometrics || canBio;
       _savedUsername = savedUser?['usuario'];
       _hasSavedSession = savedUser != null && (_savedUsername?.isNotEmpty ?? false);
+      if (_userController.text.trim().isEmpty &&
+          _savedUsername != null &&
+          _savedUsername!.isNotEmpty) {
+        _userController.text = _savedUsername!;
+      }
     });
   }
 
@@ -264,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ],
-                              if (_canUseBiometrics && isOffline) ...[
+                              if (_canUseBiometrics) ...[
                                 const SizedBox(height: 12),
                                 SizedBox(
                                   width: double.infinity,
@@ -303,41 +308,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       );
                                     },
-                                  ),
-                                ),
-                              ],
-                              if (_hasSavedSession && isOffline) ...[
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppColors.primaryRed,
-                                      side: const BorderSide(
-                                        color: AppColors.primaryRed,
-                                        width: 1.5,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.account_circle,
-                                      size: 26,
-                                      color: AppColors.primaryRed,
-                                    ),
-                                    label: Text(
-                                      _savedUsername != null && _savedUsername!.isNotEmpty
-                                          ? 'Ingresar como $_savedUsername (Modo Offline)'
-                                          : 'Ingresar con Sesión Guardada (Modo Offline)',
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryRed,
-                                      ),
-                                    ),
-                                    onPressed: () => _handleSavedSessionLogin(context),
                                   ),
                                 ),
                               ],
@@ -427,35 +397,5 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-
-  void _handleSavedSessionLogin(BuildContext context) async {
-    final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
-    final success = await authNotifier.loginWithSavedSession();
-
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Bienvenido: ${authNotifier.currentUser?.usuario} (Sesión Offline Guardada)',
-          ),
-          backgroundColor: Colors.orange.shade800,
-        ),
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            authNotifier.errorMessage ?? 'No se pudo restaurar la sesión guardada.',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
 }
 

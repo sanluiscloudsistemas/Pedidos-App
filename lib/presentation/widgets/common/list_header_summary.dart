@@ -19,25 +19,32 @@ class ListHeaderSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Mostrando $count $label',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textDark,
-          ),
-        ),
-        if (actionButtonText != null && onActionButtonPressed != null)
+    final textWidget = Text(
+      'Mostrando $count $label',
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textDark,
+      ),
+    );
+
+    if (actionButtonText != null && onActionButtonPressed != null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: textWidget),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             style: AppStyles.primaryButtonStyle,
             icon: const Icon(Icons.add, size: 16),
             label: Text(actionButtonText!),
             onPressed: onActionButtonPressed,
           ),
-      ],
-    );
+        ],
+      );
+    }
+
+    return textWidget;
   }
 }

@@ -146,9 +146,11 @@ class PedidosFilterBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ListHeaderSummary(
-              count: filteredCount,
-              label: 'pedidos',
+            Expanded(
+              child: ListHeaderSummary(
+                count: filteredCount,
+                label: 'pedidos',
+              ),
             ),
             TextButton.icon(
               onPressed: onReset,

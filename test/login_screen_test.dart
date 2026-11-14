@@ -184,6 +184,6 @@ void main() {
     // El notificador debe haber marcado el servidor como inalcanzable (modo offline activo)
     expect(connectivityNotifier.isConnected, isFalse);
     expect(find.textContaining('Modo Offline activo'), findsOneWidget);
-    expect(find.textContaining('VENDEDOR_OFFLINE'), findsOneWidget);
+    expect(find.text('Conectar'), findsOneWidget);
   });
 }
